@@ -34,6 +34,7 @@ impl MystiClient {
 
 
     fn on_local_clipboard_change(&self, content: ClipboardContent) {
+        // TODO: Send to server
         match content {
             ClipboardContent::Text(text) => {
                 println!("Clipboard text: {}", text);

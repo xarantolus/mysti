@@ -1,78 +1,82 @@
-use anyhow::Context;
-use clipboard_master::{Master, ClipboardHandler, CallbackResult};
+mod clipboard;
+
+use std::{sync::{Arc, Mutex}, thread, time::Duration, sync::mpsc::{channel, self}};
+
+use crate::clipboard::{Watcher, ClipboardContent};
 use anyhow::Result;
 use image::ImageOutputFormat;
-use image::RgbaImage;
-use std::io;
-use std::io::Cursor;
 
-use arboard::Clipboard;
-use arboard::ImageData;
-use image::DynamicImage;
-use image::ImageOutputFormat::{Bmp, Png, Jpeg};
+enum Event {
+    ClipboardEvent(ClipboardContent),
+}
 
-
-struct Handler(
-    Box<dyn FnMut()>,
-    ImageOutputFormat,
-);
-
-impl ClipboardHandler for Handler {
-    fn on_clipboard_change(&mut self) -> CallbackResult {
-        eprintln!("Clipboard content changed");
-        (self.0)();
-        CallbackResult::Next
-    }
-
-    fn on_clipboard_error(&mut self, error: io::Error) -> CallbackResult {
-        eprintln!("Error: {}", error);
-        CallbackResult::Next
+impl From<ClipboardContent> for Event {
+    fn from(content: ClipboardContent) -> Self {
+        Self::ClipboardEvent(content)
     }
 }
 
-enum ClipboardContent {
-    Text(String),
-    Image(Vec<u8>, ImageOutputFormat),
-    None,
+struct MystiClient {
+    server_url: String,
+    image_format: ImageOutputFormat,
 }
 
-fn to_dynamic_image(image: ImageData) -> Result<DynamicImage> {
-    Ok(DynamicImage::ImageRgba8(RgbaImage::from_raw(image.width as u32, image.height as u32, image.bytes.into_owned()).context("failed to decode image")?))
-}
 
-fn get_clipboard_content() -> Result<ClipboardContent> {
-    let mut clipboard = Clipboard::new()?;
-    if let Ok(text) = clipboard.get_text() {
-        return Ok(ClipboardContent::Text(text));
-    }
-    if let Ok(img) = clipboard.get_image() {
-        let mut buf = Vec::new();
-        if let Ok(img) = to_dynamic_image(img) {
-            const OUTPUT_FORMAT: ImageOutputFormat = Bmp;
-            let _ = img.write_to(&mut Cursor::new(&mut buf), OUTPUT_FORMAT)?;
-            return Ok(ClipboardContent::Image(buf, OUTPUT_FORMAT));
+
+
+impl MystiClient {
+    fn new(server_url: String, image_format: ImageOutputFormat) -> Self {
+        Self {
+            server_url,
+            image_format,
         }
     }
-    Ok(ClipboardContent::None)
+
+
+    fn on_local_clipboard_change(&self, content: ClipboardContent) {
+        match content {
+            ClipboardContent::Text(text) => {
+                println!("Clipboard text: {}", text);
+            }
+            ClipboardContent::Image(bytes, format) => {
+                println!("Clipboard image: {} bytes, format: {:?}", bytes.len(), format);
+            }
+            clipboard::ClipboardContent::None => {
+                println!("Clipboard empty");
+            }
+        }
+    }
+
+    fn process_event(&self, event: Event) {
+        match event {
+            Event::ClipboardEvent(content) => {
+                self.on_local_clipboard_change(content);
+            }
+        }
+    }
+
+    fn run(&self) -> Result<()> {
+        // copy the sender, creating a new one
+        let (sender, receiver) = channel();
+
+        // Run in a separate thread
+        let mut w = Watcher::new(self.image_format.clone(), sender.clone());
+        thread::spawn(move || {
+            w.run().expect("Failed to run watcher");
+        });
+
+        // TODO: spawn some websocket connection to server that sends events as well
+
+        loop {
+            // Wait for an event
+            let event = receiver.recv().expect("Failed to receive event");
+            self.process_event(event);
+        }
+    }
 }
 
 fn main() {
-    let handler = || {
-        match get_clipboard_content() {
-            Ok(ClipboardContent::Text(text)) => {
-                println!("Text: {}", text);
-            }
-            Ok(ClipboardContent::Image(image, _)) => {
-                println!("Image: {} bytes", image.len());
-            }
-            Ok(ClipboardContent::None) => {
-                println!("None");
-            }
-            Err(e) => {
-                println!("Error: {}", e);
-            }
-        }
-    };
+    let client = MystiClient::new("http://localhost:8000".to_string(), ImageOutputFormat::Bmp);
 
-    let _ = Master::new(Handler(Box::new(handler))).run();
+    client.run().expect("Failed to run client");
 }

@@ -1,52 +1,82 @@
-use actix::{Actor, StreamHandler};
-use actix_web::{web, App, Error, HttpRequest, HttpResponse, HttpServer};
-use actix_web_actors::ws;
+use std::sync::{
+    mpsc::{channel, Receiver, Sender},
+    Arc, Mutex,
+};
 
-/// Define HTTP actor
-struct SingleWSClient;
+use actix::{Actor, StreamHandler, Message, Handler, Addr, Context};
+use actix_web::{
+    web::{self, Bytes},
+    App, Error, HttpRequest, HttpResponse, HttpServer,
+};
+use actix_web_actors::ws::{self, WebsocketContext};
 
-impl Actor for SingleWSClient {
-    type Context = ws::WebsocketContext<Self>;
+mod web_server;
+use web_server::start_web_server;
+
+#[derive(Clone)]
+enum BroadcastMessage {
+    Text(String),
+    Bytes(Bytes),
 }
 
-/// Handler for ws::Message message
-impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for SingleWSClient {
-    fn handle(&mut self, msg: Result<ws::Message, ws::ProtocolError>, ctx: &mut Self::Context) {
-        let Ok(message) = msg else {
-            println!("WS ProtocolError: {:?}", msg);
-            return;
-        };
+#[derive(Clone)]
+struct Server {
+    clients: Arc<Mutex<Vec<Arc<SingleWSClient>>>>,
+}
 
-        match message {
-            ws::Message::Ping(msg) => ctx.pong(&msg),
-            ws::Message::Text(text) => ctx.text(text),
-            ws::Message::Binary(bin) => ctx.binary(bin),
-            ws::Message::Close(reason) => {
-                println!("Closed WS connection: {:?}", reason);
-            }
-            _ => (),
+impl Actor for Server {
+    type Context = Context<Self>;
+}
+
+impl Server {
+    fn new() -> Self {
+        Self {
+            clients: Arc::new(Mutex::new(Vec::new())),
+        }
+    }
+
+    fn broadcast(&self, msg: BroadcastMessage) {
+        let clients = self.clients.lock().unwrap();
+        for client in clients.iter() {
+            // client.
         }
     }
 }
 
-async fn index(req: HttpRequest, stream: web::Payload) -> Result<HttpResponse, Error> {
-    let client = SingleWSClient {};
-    let resp = ws::start(client, &req, stream);
 
-    // TODO: Somehow join into clients list and then broadcast messages to all clients
-
-
-    resp
+#[derive(Clone)]
+struct SingleWSClient {
+    incoming: Sender<BroadcastMessage>,
+    outgoing: Arc<Mutex<Receiver<BroadcastMessage>>>,
 }
+
+impl SingleWSClient {
+    fn new() -> Self {
+        let (incoming, outgoing) = channel();
+        Self {
+            incoming,
+            outgoing: Arc::new(Mutex::new(outgoing)),
+        }
+    }
+}
+
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
-    let port = 8080;
+    let web_port = 8080;
 
-    println!("Starting server on port {}", port);
+    let server_data = Arc::new(Mutex::new(Server::new()));
 
-    HttpServer::new(|| App::new().route("/ws", web::get().to(index)))
-        .bind(("127.0.0.1", port))?
-        .run()
-        .await
+    // Run web server in separate thread
+    actix::spawn(async move {
+        start_web_server(web_port, server_data).expect("Failed to start web server").await.expect("Failed to await start of web server")
+    });
+
+    // start_socket_server().await
+
+    loop   {
+        println!("Hello world!");
+
+        std::thread::sleep(std::time::Duration::from_secs(1));
+    }
 }

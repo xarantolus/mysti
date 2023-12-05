@@ -11,6 +11,8 @@ actix-web = "4.4.0"
 actix-web-actors = "4.2.0"
 anyhow = "1.0.75"
 common = { path = "../common" }
+tokio = "1.34.0"
+tokio-tungstenite = "0.20.1"
 
 [[bin]]
 name = "mysti-server"

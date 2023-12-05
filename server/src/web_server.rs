@@ -21,6 +21,15 @@ async fn handle_client_message(
     // TODO: some custom logic to copy clipboard content to manager struct
     manager.broadcast(&message, Some(sender_id));
 
+    // Sometimes we have custom logic for certain messages.
+    match message {
+        ActionMessage::Clipboard(content) => {
+            let mut last_clipboard_content = manager.last_clipboard_content.write().unwrap();
+            *last_clipboard_content = content;
+        }
+        _ => (),
+    }
+
     Ok(())
 }
 

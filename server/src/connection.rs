@@ -11,7 +11,7 @@ pub struct Manager {
     connections: Arc<RwLock<HashMap<u64, UnboundedSender<ActionMessage>>>>,
     counter: AtomicU64,
 
-    last_clipboard_content: ClipboardContent,
+    pub last_clipboard_content: RwLock<ClipboardContent>
 }
 
 impl Manager {
@@ -20,7 +20,7 @@ impl Manager {
         Manager {
             connections: Arc::new(RwLock::new(HashMap::new())),
             counter: AtomicU64::new(0),
-            last_clipboard_content: ClipboardContent::None,
+            last_clipboard_content: RwLock::new(ClipboardContent::None),
         }
     }
 

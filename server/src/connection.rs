@@ -1,12 +1,39 @@
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::atomic::AtomicU64;
 use std::sync::{Arc, RwLock};
 use tokio::sync::mpsc::UnboundedSender;
 
-#[derive(Clone)]
-enum BroadcastMessage {
+#[derive(Clone, Serialize, Deserialize)]
+pub enum BroadcastMessage {
     Text(String),
     Bytes(Vec<u8>),
+}
+
+impl From<BroadcastMessage> for warp::ws::Message {
+    fn from(message: BroadcastMessage) -> Self {
+        match message {
+            BroadcastMessage::Text(text) => warp::ws::Message::text(text),
+            BroadcastMessage::Bytes(bytes) => warp::ws::Message::binary(bytes),
+        }
+    }
+}
+
+impl TryFrom<warp::ws::Message> for BroadcastMessage {
+    type Error = anyhow::Error;
+
+    fn try_from(message: warp::ws::Message) -> Result<Self, Self::Error> {
+        if message.is_text() {
+            match message.to_str() {
+                Ok(msg) => Ok(BroadcastMessage::Text(msg.to_owned())),
+                Err(_) => Err(anyhow::anyhow!("Error converting text message to string")),
+            }
+        } else if message.is_binary() {
+            Ok(BroadcastMessage::Bytes(message.as_bytes().to_owned()))
+        } else {
+            Err(anyhow::anyhow!("Invalid message type"))
+        }
+    }
 }
 
 // Define the struct for managing WebSocket connections.

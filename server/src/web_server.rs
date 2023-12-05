@@ -2,13 +2,13 @@ use std::sync::{Arc, Mutex};
 use anyhow::{Result, Context};
 use actix_web::{HttpServer, App, web};
 
-use crate::Server;
+use crate::ConnectionManager;
 
-pub fn start_web_server(web_port: u16, server_data: Arc<Mutex<Server>>) -> Result<actix_web::dev::Server> {
+pub fn start_web_server(web_port: u16, connection_manager: Arc<Mutex<ConnectionManager>>) -> Result<actix_web::dev::Server> {
     println!("Starting web server on port {}", web_port);
 
     Ok(HttpServer::new(move || {
-        let wd = web::Data::new(server_data.clone());
+        let wd = web::Data::new(connection_manager.clone());
 
         App::new()
             .app_data(wd)

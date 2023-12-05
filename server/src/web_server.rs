@@ -1,5 +1,6 @@
-use crate::{connection::BroadcastMessage, Manager};
+use crate::Manager;
 use anyhow::Result;
+use common::ActionMessage;
 use futures_util::{SinkExt, StreamExt};
 use std::{convert::Infallible, sync::Arc};
 use tokio::sync::mpsc;
@@ -13,13 +14,12 @@ fn with_manager(
 }
 
 async fn handle_client_message(
-    message: Message,
+    message: ActionMessage,
     manager: Arc<Manager>,
     sender_id: u64,
 ) -> Result<()> {
-
     // TODO: some custom logic to copy clipboard content to manager struct
-    manager.broadcast(&BroadcastMessage::from_message(message, sender_id)?);
+    manager.broadcast(&message, Some(sender_id));
 
     Ok(())
 }
@@ -32,8 +32,13 @@ async fn handle_connection(ws: WebSocket, manager: Arc<Manager>) {
 
     // Every time we get a message from the outbound stream, send it to the user.
     tokio::spawn(async move {
-        while let Some(message) = websocket_outbound_stream.recv().await {
-            match user_ws_tx.send(message.into()).await {
+        while let Some(action_msg) = websocket_outbound_stream.recv().await {
+            let Ok(message) = Message::try_from(action_msg) else {
+                eprintln!("Error converting Action Message to WebSocket message");
+                continue;
+            };
+
+            match user_ws_tx.send(message).await {
                 Ok(_) => (),
                 Err(e) => {
                     eprintln!("Error sending message to WebSocket: {}", e);
@@ -47,6 +52,11 @@ async fn handle_connection(ws: WebSocket, manager: Arc<Manager>) {
     while let Some(result) = user_ws_rx.next().await {
         match result {
             Ok(message) => {
+                let Ok(message) = ActionMessage::try_from(message) else {
+                    eprintln!("Error converting WebSocket message to Message");
+                    continue;
+                };
+
                 if let Err(e) = handle_client_message(message, manager.clone(), id).await {
                     eprintln!("Error handling message from WebSocket: {}", e);
                 }
@@ -74,12 +84,10 @@ pub async fn start_web_server(web_port: u16, connection_manager: Arc<Manager>) {
         .and(warp::post())
         .and(warp::body::json())
         .and(with_manager(connection_manager.clone()))
-        .map(
-            |message: BroadcastMessage, manager: Arc<Manager>| {
-                manager.broadcast(&message);
-                warp::reply()
-            },
-        );
+        .map(|message: ActionMessage, manager: Arc<Manager>| {
+            manager.broadcast(&message, None);
+            warp::reply()
+        });
 
     let routes = ws_route.or(broadcast_route);
 

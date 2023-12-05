@@ -1,6 +1,6 @@
 use anyhow::Context;
-use clipboard_master::{Master, ClipboardHandler, CallbackResult};
 use anyhow::Result;
+use clipboard_master::{CallbackResult, ClipboardHandler, Master};
 use common::ClipboardContent;
 use image::ImageOutputFormat;
 use image::RgbaImage;
@@ -18,7 +18,7 @@ pub struct Watcher<T: From<ClipboardContent>> {
     output_format: ImageOutputFormat,
 }
 
-impl <T: From<ClipboardContent>> Watcher<T> {
+impl<T: From<ClipboardContent>> Watcher<T> {
     pub fn new(output_format: ImageOutputFormat, sender: Sender<T>) -> Self {
         Self {
             channel: sender,
@@ -27,13 +27,21 @@ impl <T: From<ClipboardContent>> Watcher<T> {
     }
 
     pub fn run(&mut self) -> Result<()> {
-        Master::new(self).run().context("failed to run clipboard watcher")
+        Master::new(self)
+            .run()
+            .context("failed to run clipboard watcher")
     }
 }
 
-
 fn to_dynamic_image(image: ImageData) -> Result<DynamicImage> {
-    Ok(DynamicImage::ImageRgba8(RgbaImage::from_raw(image.width as u32, image.height as u32, image.bytes.into_owned()).context("failed to decode image")?))
+    Ok(DynamicImage::ImageRgba8(
+        RgbaImage::from_raw(
+            image.width as u32,
+            image.height as u32,
+            image.bytes.into_owned(),
+        )
+        .context("failed to decode image")?,
+    ))
 }
 
 // Gets the actual clipboard content
@@ -71,4 +79,3 @@ impl<T: From<ClipboardContent>> ClipboardHandler for &mut Watcher<T> {
         CallbackResult::Next
     }
 }
-

@@ -1,6 +1,9 @@
 mod clipboard;
 
-use std::{sync::{Arc, Mutex}, thread, time::Duration, sync::mpsc::{channel, self}};
+use std::{
+    sync::mpsc::{channel},
+    thread,
+};
 
 use crate::clipboard::Watcher;
 use anyhow::Result;
@@ -22,9 +25,6 @@ struct MystiClient {
     image_format: ImageOutputFormat,
 }
 
-
-
-
 impl MystiClient {
     fn new(server_url: String, image_format: ImageOutputFormat) -> Self {
         Self {
@@ -32,7 +32,6 @@ impl MystiClient {
             image_format,
         }
     }
-
 
     fn on_local_clipboard_change(&self, content: ClipboardContent) {
         // TODO: Send to server

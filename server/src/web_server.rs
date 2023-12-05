@@ -1,4 +1,4 @@
-use crate::{connection::BroadcastMessage, ConnectionManager};
+use crate::{connection::BroadcastMessage, Manager};
 use anyhow::Result;
 use futures_util::{SinkExt, StreamExt};
 use std::{convert::Infallible, sync::Arc};
@@ -7,26 +7,28 @@ use warp::ws::{Message, WebSocket};
 use warp::Filter;
 
 fn with_manager(
-    manager: Arc<ConnectionManager>,
-) -> impl Filter<Extract = (Arc<ConnectionManager>,), Error = Infallible> + Clone {
+    manager: Arc<Manager>,
+) -> impl Filter<Extract = (Arc<Manager>,), Error = Infallible> + Clone {
     warp::any().map(move || manager.clone())
 }
 
 async fn handle_client_message(
     message: Message,
-    manager: Arc<ConnectionManager>,
+    manager: Arc<Manager>,
     sender_id: u64,
 ) -> Result<()> {
-    manager.broadcast(&message.try_into()?, Some(sender_id));
+
+    // TODO: some custom logic to copy clipboard content to manager struct
+    manager.broadcast(&BroadcastMessage::from_message(message, sender_id)?);
 
     Ok(())
 }
 
-async fn handle_connection(ws: WebSocket, manager: Arc<ConnectionManager>) {
+async fn handle_connection(ws: WebSocket, manager: Arc<Manager>) {
     let (mut user_ws_tx, mut user_ws_rx) = ws.split();
     let (websocket_writer, mut websocket_outbound_stream) = mpsc::unbounded_channel();
 
-    let id = manager.add_connection(websocket_writer);
+    let id = manager.add_connection(&websocket_writer);
 
     // Every time we get a message from the outbound stream, send it to the user.
     tokio::spawn(async move {
@@ -56,14 +58,15 @@ async fn handle_connection(ws: WebSocket, manager: Arc<ConnectionManager>) {
         }
     }
 
+    eprintln!("WebSocket connection closed for {}", id);
     manager.remove_connection(id);
 }
 
-pub async fn start_web_server(web_port: u16, connection_manager: Arc<ConnectionManager>) {
+pub async fn start_web_server(web_port: u16, connection_manager: Arc<Manager>) {
     let ws_route = warp::path("ws")
         .and(warp::ws())
         .and(with_manager(connection_manager.clone()))
-        .map(|ws: warp::ws::Ws, manager: Arc<ConnectionManager>| {
+        .map(|ws: warp::ws::Ws, manager: Arc<Manager>| {
             ws.on_upgrade(move |socket| handle_connection(socket, manager))
         });
 
@@ -72,8 +75,8 @@ pub async fn start_web_server(web_port: u16, connection_manager: Arc<ConnectionM
         .and(warp::body::json())
         .and(with_manager(connection_manager.clone()))
         .map(
-            |message: BroadcastMessage, manager: Arc<ConnectionManager>| {
-                manager.broadcast(&message, None);
+            |message: BroadcastMessage, manager: Arc<Manager>| {
+                manager.broadcast(&message);
                 warp::reply()
             },
         );

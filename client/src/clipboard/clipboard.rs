@@ -1,6 +1,7 @@
 use anyhow::Context;
 use clipboard_master::{Master, ClipboardHandler, CallbackResult};
 use anyhow::Result;
+use common::ClipboardContent;
 use image::ImageOutputFormat;
 use image::RgbaImage;
 use std::io;
@@ -10,12 +11,6 @@ use std::sync::mpsc::Sender;
 use arboard::Clipboard;
 use arboard::ImageData;
 use image::DynamicImage;
-
-pub enum ClipboardContent {
-    Text(String),
-    Image(Vec<u8>, ImageOutputFormat),
-    None,
-}
 
 pub struct Watcher<T: From<ClipboardContent>> {
     // A channel of objects that can be ClipboardContent.into() converted
@@ -51,7 +46,7 @@ fn get_clipboard_content(output_format: &ImageOutputFormat) -> Result<ClipboardC
         let mut buf = Vec::new();
         if let Ok(img) = to_dynamic_image(img) {
             let _ = img.write_to(&mut Cursor::new(&mut buf), output_format.clone())?;
-            return Ok(ClipboardContent::Image(buf, output_format.clone()));
+            return Ok(ClipboardContent::Image(buf));
         }
     }
     Ok(ClipboardContent::None)

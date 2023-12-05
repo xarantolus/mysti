@@ -1,2 +1,2 @@
 pub mod clipboard;
-pub use crate::clipboard::clipboard::{Watcher, ClipboardContent};
+pub use crate::clipboard::clipboard::Watcher;

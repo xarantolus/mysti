@@ -1,5 +1,14 @@
-#[derive(Debug, Clone, PartialEq, Eq)]
+use serde::{Deserialize, Serialize};
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Message {
-    ClipboardText(String),
-    ClipboardImage(Vec<u8>),
+    Clipboard(ClipboardContent),
+}
+
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub enum ClipboardContent {
+    Text(String),
+    Image(Vec<u8>),
+    None,
 }

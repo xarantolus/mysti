@@ -2,8 +2,9 @@ mod clipboard;
 
 use std::{sync::{Arc, Mutex}, thread, time::Duration, sync::mpsc::{channel, self}};
 
-use crate::clipboard::{Watcher, ClipboardContent};
+use crate::clipboard::Watcher;
 use anyhow::Result;
+use common::ClipboardContent;
 use image::ImageOutputFormat;
 
 enum Event {
@@ -39,10 +40,10 @@ impl MystiClient {
             ClipboardContent::Text(text) => {
                 println!("Clipboard text: {}", text);
             }
-            ClipboardContent::Image(bytes, format) => {
-                println!("Clipboard image: {} bytes, format: {:?}", bytes.len(), format);
+            ClipboardContent::Image(bytes) => {
+                println!("Clipboard image: {} bytes", bytes.len());
             }
-            clipboard::ClipboardContent::None => {
+            ClipboardContent::None => {
                 println!("Clipboard empty");
             }
         }

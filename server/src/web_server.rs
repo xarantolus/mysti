@@ -18,7 +18,6 @@ async fn handle_client_message(
     manager: Arc<Manager>,
     sender_id: u64,
 ) -> Result<()> {
-    // TODO: some custom logic to copy clipboard content to manager struct
     manager.broadcast(&message, Some(sender_id));
 
     // Sometimes we have custom logic for certain messages.

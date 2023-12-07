@@ -6,7 +6,7 @@ use web_server::start_web_server;
 
 mod connection;
 
-#[actix_web::main]
+#[tokio::main]
 async fn main() {
     let web_port = 8080;
 

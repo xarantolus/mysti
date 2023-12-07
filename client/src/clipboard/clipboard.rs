@@ -98,6 +98,14 @@ pub fn set_clipboard(content: &ClipboardContent) -> anyhow::Result<()> {
         ClipboardContent::None => Ok(()),
         ClipboardContent::Text(text) => {
             let mut clipboard = Clipboard::new()?;
+
+            // Check the current text and only set if it's different
+            if let Ok(current_text) = clipboard.get_text() {
+                if current_text == *text {
+                    return Ok(());
+                }
+            }
+
             clipboard
                 .set_text(text.clone())
                 .context("failed to set clipboard text")
@@ -106,6 +114,17 @@ pub fn set_clipboard(content: &ClipboardContent) -> anyhow::Result<()> {
             let mut clipboard = Clipboard::new()?;
             let img = image::load_from_memory(bytes)?;
             let clipboard_image = from_dynamic_image(img)?;
+
+            // Check the current image and only set if it's different
+            if let Ok(current_image) = clipboard.get_image() {
+                if current_image.height == clipboard_image.height
+                    && current_image.width == clipboard_image.width
+                    && current_image.bytes == clipboard_image.bytes
+                {
+                    return Ok(());
+                }
+            }
+
             clipboard
                 .set_image(clipboard_image)
                 .context("failed to set clipboard image")

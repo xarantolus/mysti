@@ -1,8 +1,7 @@
-{env.CADDY_DOMAIN} {
+https://misc.010.one:728 {
   reverse_proxy server:8080
 
-
-  tls {env.EMAIL} {
+  tls xarantolus@protonmail.com {
     dns namecheap {
           api_key {env.NAMECHEAP_API_KEY}
           user {env.NAMECHEAP_API_USER}

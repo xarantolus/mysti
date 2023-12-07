@@ -1,9 +1,12 @@
-:80 {
+{env.CADDY_DOMAIN} {
   reverse_proxy server:8080
+
+
+  tls {env.EMAIL} {
+    dns namecheap {
+          api_key {env.NAMECHEAP_API_KEY}
+          user {env.NAMECHEAP_API_USER}
+      }
+  }
 }
 
-# All incoming HTTPS connections should be proxied to the backend
-misc.010.one:728 {
-  encode zstd gzip
-  reverse_proxy server:8080
-}

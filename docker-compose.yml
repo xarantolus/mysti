@@ -1,15 +1,19 @@
 version: '3.7'
 services:
   server:
-    image: ghcr.io/xarantolus/mysti:latest
+    image: ${CONTAINER_REGISTRY_PREFIX:-ghcr.io/xarantolus}/philipp/mysti:latest
     build:
       context: .
       dockerfile: Dockerfile
     networks:
       - caddy_network
+    restart: unless-stopped
 
   caddy:
-    image: caddy:2-alpine
+    image: ${CONTAINER_REGISTRY_PREFIX:-ghcr.io/xarantolus}/mysti-caddy:latest
+    build:
+      context: .
+      dockerfile: Dockerfile.caddy
     ports:
       - 728:728
     volumes:
@@ -18,12 +22,10 @@ services:
       - caddy_config:/config
     networks:
       - caddy_network
+    env_file:
+      - .env
+    restart: unless-stopped
 
-  watchtower:
-    image: containrrr/watchtower
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
-    command: --interval 1800
 
 volumes:
   caddy_data:

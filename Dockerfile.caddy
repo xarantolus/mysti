@@ -1,0 +1,9 @@
+FROM caddy:2-builder AS builder
+
+RUN GOOS=linux GOARCH=arm64 \
+	xcaddy build \
+	--with github.com/caddy-dns/namecheap
+
+FROM arm64v8/caddy:2-alpine
+
+COPY --from=builder /usr/bin/caddy /usr/bin/caddy

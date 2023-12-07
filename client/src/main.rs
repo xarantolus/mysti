@@ -1,20 +1,31 @@
 mod clipboard;
 
-use std::{
-    sync::mpsc::{channel},
-    thread,
-};
-
 use crate::clipboard::Watcher;
-use anyhow::Result;
-use common::ClipboardContent;
+use anyhow::{Context, Result};
+use common::{ActionMessage, ClipboardContent};
+use futures_util::SinkExt;
+use futures_util::StreamExt;
 use image::ImageOutputFormat;
+use std::convert::TryInto;
+use std::{thread, time::Duration};
+use tokio::select;
+use tokio::sync::futures;
+use tokio::sync::mpsc::channel;
+use tokio::sync::mpsc::Sender;
+use tokio_tungstenite::connect_async;
+use url::Url;
 
-enum Event {
+enum LocalEvent {
     ClipboardEvent(ClipboardContent),
 }
 
-impl From<ClipboardContent> for Event {
+enum Event {
+    LocalEvent(LocalEvent),
+    RemoteEvent(ActionMessage),
+    OutgoingEvent(ActionMessage),
+}
+
+impl From<ClipboardContent> for LocalEvent {
     fn from(content: ClipboardContent) -> Self {
         Self::ClipboardEvent(content)
     }
@@ -33,51 +44,178 @@ impl MystiClient {
         }
     }
 
-    fn on_local_clipboard_change(&self, content: ClipboardContent) {
-        // TODO: Send to server
-        match content {
-            ClipboardContent::Text(text) => {
-                println!("Clipboard text: {}", text);
-            }
-            ClipboardContent::Image(bytes) => {
-                println!("Clipboard image: {} bytes", bytes.len());
-            }
-            ClipboardContent::None => {
-                println!("Clipboard empty");
-            }
-        }
+    async fn on_local_clipboard_change(&self, content: ClipboardContent, channel: Sender<Event>) {
+        let am = ActionMessage::Clipboard(content);
+
+        channel
+            .send(Event::OutgoingEvent(am))
+            .await
+            .expect("Failed to send clipboard content");
     }
 
-    fn process_event(&self, event: Event) {
+    async fn process_local_event(&self, event: LocalEvent, channel: Sender<Event>) {
         match event {
-            Event::ClipboardEvent(content) => {
-                self.on_local_clipboard_change(content);
+            LocalEvent::ClipboardEvent(content) => {
+                self.on_local_clipboard_change(content, channel).await;
             }
         }
     }
 
-    fn run(&self) -> Result<()> {
+    fn process_action_message(&mut self, event: ActionMessage) {
+        eprintln!("Received action message: {:?}", event);
+
+        match event {
+            ActionMessage::Clipboard(content) => {
+                // TODO: set clipboard
+            }
+        }
+    }
+
+    async fn run(&mut self) -> Result<()> {
         // copy the sender, creating a new one
-        let (sender, receiver) = channel();
+        let (clipboard_events, mut clipboard_receiver) = channel::<LocalEvent>(10);
 
         // Run in a separate thread
-        let mut w = Watcher::new(self.image_format.clone(), sender.clone());
+        let mut w = Watcher::new(self.image_format.clone(), clipboard_events.clone());
         thread::spawn(move || {
             w.run().expect("Failed to run watcher");
         });
 
-        // TODO: spawn some websocket connection to server that sends events as well
+        // Parse and set the correct URL
+        let mut server_url = Url::parse(&self.server_url).context("Failed to parse server URL")?;
+        server_url.set_path("/ws");
+        server_url
+            .set_scheme(match server_url.scheme() {
+                "http" => "ws",
+                "https" => "wss",
+                _ => return Err(anyhow::anyhow!("Invalid scheme")),
+            })
+            .map_err(|_| anyhow::anyhow!("Failed to set scheme"))?;
+
+        let (remote_event, mut remote_receiver) = channel::<ActionMessage>(10);
+        let (outgoing_events, mut outgoing_receiver) = channel::<ActionMessage>(10);
+
+        let moved_server_url = server_url.clone();
+        tokio::spawn(async move {
+            loop {
+                // Attempt to connect to server and retry if it fails
+                let mut socket = loop {
+                    match connect_async(moved_server_url.clone()).await {
+                        Ok((socket, _)) => break socket,
+                        Err(e) => {
+                            eprintln!("Failed to connect to server: {}", e);
+                            thread::sleep(Duration::from_secs(5));
+                        }
+                    };
+                };
+
+                println!("Connected to server");
+
+                let (mut socket_sender, mut socket_receiver) = socket.split();
+
+                loop {
+                    // Read something from the socket OR write something to the socket when we get an outgoing event
+                    select! {
+                        // Simple example with correct sytax: receive from outgoing_receiver and socket_receiver
+                        event = outgoing_receiver.recv() => {
+                            println!("Received outgoing event: {:?}", event);
+                            let Some(event) = event else { break };
+
+                            let message : tokio_tungstenite::tungstenite::Message = match event.try_into() {
+                                Ok(message) => message,
+                                Err(err) => {
+                                    eprintln!("Failed to convert event to message: {}", err);
+                                    continue;
+                                }
+                            };
+
+                            socket_sender.send(message).await.expect("Failed to send outgoing event");
+                            continue;
+                        }
+                        event = socket_receiver.next() => {
+                            println!("Received remote event: {:?}", event);
+                            let Some(event) = event else { break };
+                            let Ok(event) = event else {
+                                eprintln!("Failed to receive remote event: {:?}", event);
+                                break;
+                            };
+
+                            let action_message : ActionMessage = match event.try_into() {
+                                Ok(event) => event,
+                                Err(err) => {
+                                    eprintln!("Failed to convert message to event: {}", err);
+                                    continue;
+                                }
+                            };
+
+                            remote_event.send(action_message).await.expect("Failed to send remote event");
+                        }
+                    }
+                }
+
+                println!("Disconnected from server - reconnecting in 5 seconds");
+                thread::sleep(Duration::from_secs(5));
+            }
+        });
+
+        let (all_events, mut all_receiver) = channel::<Event>(10);
+
+        // Forward local events to the main channel
+        let local_all_events = all_events.clone();
+        tokio::spawn(async move {
+            loop {
+                let event = clipboard_receiver
+                    .recv()
+                    .await
+                    .expect("Failed to receive local event");
+                local_all_events
+                    .send(Event::LocalEvent(event))
+                    .await
+                    .expect("Failed to send local event");
+            }
+        });
+
+        // Forward remote events to the main channel
+        let remote_all_events = all_events.clone();
+        tokio::spawn(async move {
+            loop {
+                let event = remote_receiver
+                    .recv()
+                    .await
+                    .expect("Failed to receive remote event");
+                remote_all_events
+                    .send(Event::RemoteEvent(event))
+                    .await
+                    .expect("Failed to send remote event");
+            }
+        });
 
         loop {
-            // Wait for an event
-            let event = receiver.recv().expect("Failed to receive event");
-            self.process_event(event);
+            let event = all_receiver.recv().await.expect("Failed to receive event");
+
+            match event {
+                Event::LocalEvent(event) => {
+                    let event_return = all_events.clone();
+
+                    self.process_local_event(event, event_return).await;
+                }
+                Event::RemoteEvent(event) => {
+                    self.process_action_message(event);
+                }
+                Event::OutgoingEvent(event) => {
+                    outgoing_events
+                        .send(event)
+                        .await
+                        .expect("Failed to send outgoing event");
+                }
+            }
         }
     }
 }
 
-fn main() {
-    let client = MystiClient::new("http://localhost:8000".to_string(), ImageOutputFormat::Bmp);
+#[tokio::main]
+async fn main() {
+    let mut client = MystiClient::new("http://localhost:8080".to_string(), ImageOutputFormat::Bmp);
 
-    client.run().expect("Failed to run client");
+    client.run().await.expect("Failed to run client");
 }

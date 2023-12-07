@@ -67,3 +67,52 @@ impl TryFrom<ActionMessage> for WebSocketMessage {
         }
     }
 }
+
+
+use tokio_tungstenite::tungstenite::Message;
+
+impl TryFrom<Message> for ActionMessage {
+    type Error = anyhow::Error;
+
+    fn try_from(message: Message) -> Result<Self, Self::Error> {
+        match message {
+            Message::Text(msg) => Ok(serde_json::from_str(&msg)?),
+            Message::Binary(bytes) => {
+                // The first byte of the binary message is the type of the message.
+                if bytes.len() <= 0 {
+                    return Err(anyhow::anyhow!("Invalid binary message - message is empty"));
+                }
+
+                match bytes[0] {
+                    BINARY_IMAGE_MESSAGE_TYPE => {
+                        // Image message
+                        Ok(ActionMessage::Clipboard(ClipboardContent::Image(
+                            bytes[1..].to_vec(),
+                        )))
+                    }
+                    _ => Err(anyhow::anyhow!(
+                        "Invalid binary message - invalid message type {}",
+                        bytes[0]
+                    )),
+                }
+            }
+            _ => Err(anyhow::anyhow!("Invalid message type")),
+        }
+    }
+}
+
+impl TryFrom<ActionMessage> for Message {
+    type Error = anyhow::Error;
+
+    fn try_from(message: ActionMessage) -> Result<Self, Self::Error> {
+        match message {
+            // Special messages get a custom handler, otherwise just serialize the message as JSON.
+            ActionMessage::Clipboard(ClipboardContent::Image(content)) => {
+                let mut bytes = vec![BINARY_IMAGE_MESSAGE_TYPE];
+                bytes.extend(content);
+                Ok(Message::Binary(bytes))
+            }
+            _ => Ok(Message::Text(serde_json::to_string(&message)?)),
+        }
+    }
+}

@@ -1,6 +1,6 @@
 use crate::Manager;
 use anyhow::Result;
-use common::ActionMessage;
+use common::{ActionMessage, ClipboardContent};
 use futures_util::{SinkExt, StreamExt};
 use std::{convert::Infallible, sync::Arc};
 use tokio::sync::mpsc;
@@ -25,6 +25,8 @@ async fn handle_client_message(
         ActionMessage::Clipboard(content) => {
             let mut last_clipboard_content = manager.last_clipboard_content.write().unwrap();
             *last_clipboard_content = content;
+
+            eprintln!("Received clipboard content");
         }
         _ => (),
     }
@@ -52,6 +54,23 @@ async fn handle_connection(ws: WebSocket, manager: Arc<Manager>) {
                     eprintln!("Error sending message to WebSocket: {}", e);
                     break;
                 }
+            }
+        }
+    });
+
+    // Initial message writing
+    let ws_writer_clone = websocket_writer.clone();
+    let manager_clone = manager.clone();
+    tokio::spawn(async move {
+        // Send the last clipboard content to the user
+        let last_clipboard_content = manager_clone.last_clipboard_content.read().unwrap();
+        let content = last_clipboard_content.clone();
+
+        match content {
+            ClipboardContent::None => (),
+            _ => {
+                let message = ActionMessage::Clipboard(last_clipboard_content.clone());
+                let _ = ws_writer_clone.send(message);
             }
         }
     });

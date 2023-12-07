@@ -6,7 +6,7 @@ use image::ImageOutputFormat;
 use image::RgbaImage;
 use std::io;
 use std::io::Cursor;
-use std::sync::mpsc::Sender;
+use tokio::sync::mpsc::Sender;
 
 use arboard::Clipboard;
 use arboard::ImageData;
@@ -65,7 +65,9 @@ impl<T: From<ClipboardContent>> ClipboardHandler for &mut Watcher<T> {
         eprintln!("Clipboard content changed");
         match get_clipboard_content(&self.output_format) {
             Ok(content) => {
-                self.channel.send(T::from(content)).unwrap();
+                // Since we cannot make this function async, use a trick to send the content
+                // to the main thread
+                let _ = self.channel.try_send(content.into());
             }
             Err(err) => {
                 eprintln!("Error: {}", err);

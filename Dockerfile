@@ -1,41 +1,20 @@
-# Dockerfile that tries to minimize the size of the image,
-# downloading dependencies in the first stage, building in the second and running in the second stage
-# It must work on both x86_64 and arm64 architectures
-FROM rust:1.74-slim-buster as deps
+# Build Stage
+FROM rust:1.74-slim-buster as builder
 
-# Download dependencies
-RUN cargo new --bin server
-RUN cargo new --lib common
+RUN rustup target add aarch64-unknown-linux-gnu
 
-COPY server/Cargo.toml server/Cargo.toml
-COPY client/Cargo.toml client/Cargo.toml
-COPY common/Cargo.toml common/Cargo.toml
-COPY Cargo.lock ./Cargo.lock
-COPY Cargo.toml ./Cargo.toml
+RUN apt-get update && \
+	apt-get install -y g++-aarch64-linux-gnu libc6-dev-arm64-cross
 
-RUN cd server && \
-	cargo build --release && \
-	rm -rf target/release/deps/server* server/src common/src
+ENV CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc
 
-FROM rust:1.74.0 as builder
+COPY . .
 
-# Copy the dependencies cache
-COPY --from=deps /usr/local/cargo /usr/local/cargo
-COPY --from=deps /target /target
+RUN cd server && cargo build --target aarch64-unknown-linux-gnu --release
 
-COPY --from=deps server/Cargo.toml server/Cargo.toml
-COPY --from=deps common/Cargo.toml common/Cargo.toml
+# Final Stage
+FROM arm64v8/debian:buster-slim
 
-# Build the project
-COPY server/src ./server/src
-COPY common/src ./common/src
-
-RUN cd server && cargo build --release
-
-# Run the project
-FROM debian:buster-slim
-
-COPY --from=builder /target/release/mysti-server /mysti-server
+COPY --from=builder /target/aarch64-unknown-linux-gnu/release/mysti-server /mysti-server
 
 CMD ["/mysti-server"]
-

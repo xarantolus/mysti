@@ -61,14 +61,16 @@ impl MystiClient {
         }
     }
 
-    fn process_action_message(&mut self, event: ActionMessage) {
+    fn process_action_message(&mut self, event: &ActionMessage) -> Result<()> {
         eprintln!("Received action message: {:?}", event);
 
-        match event {
+        match &event {
             ActionMessage::Clipboard(content) => {
-                // TODO: set clipboard
+                clipboard::set_clipboard(&content)?;
             }
         }
+
+        Ok(())
     }
 
     async fn run(&mut self) -> Result<()> {
@@ -200,7 +202,12 @@ impl MystiClient {
                     self.process_local_event(event, event_return).await;
                 }
                 Event::RemoteEvent(event) => {
-                    self.process_action_message(event);
+                    match self.process_action_message(&event) {
+                        Ok(_) => (),
+                        Err(err) => {
+                            eprintln!("Error processing action message {:?}: {}", event, err);
+                        }
+                    }
                 }
                 Event::OutgoingEvent(event) => {
                     outgoing_events

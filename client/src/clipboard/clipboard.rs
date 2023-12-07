@@ -2,6 +2,7 @@ use anyhow::Context;
 use anyhow::Result;
 use clipboard_master::{CallbackResult, ClipboardHandler, Master};
 use common::ClipboardContent;
+use image::GenericImageView;
 use image::ImageOutputFormat;
 use image::RgbaImage;
 use std::io;
@@ -44,6 +45,16 @@ fn to_dynamic_image(image: ImageData) -> Result<DynamicImage> {
     ))
 }
 
+fn from_dynamic_image(image: DynamicImage) -> Result<ImageData<'static>> {
+    let (width, height) = image.dimensions();
+    let bytes = image.to_rgba8().into_raw();
+    Ok(ImageData {
+        width: width as usize,
+        height: height as usize,
+        bytes: bytes.into(),
+    })
+}
+
 // Gets the actual clipboard content
 fn get_clipboard_content(output_format: &ImageOutputFormat) -> Result<ClipboardContent> {
     let mut clipboard = Clipboard::new()?;
@@ -79,5 +90,25 @@ impl<T: From<ClipboardContent>> ClipboardHandler for &mut Watcher<T> {
     fn on_clipboard_error(&mut self, error: io::Error) -> CallbackResult {
         eprintln!("Error: {}", error);
         CallbackResult::Next
+    }
+}
+
+pub fn set_clipboard(content: &ClipboardContent) -> anyhow::Result<()> {
+    match &content {
+        ClipboardContent::None => Ok(()),
+        ClipboardContent::Text(text) => {
+            let mut clipboard = Clipboard::new()?;
+            clipboard
+                .set_text(text.clone())
+                .context("failed to set clipboard text")
+        }
+        ClipboardContent::Image(bytes) => {
+            let mut clipboard = Clipboard::new()?;
+            let img = image::load_from_memory(bytes)?;
+            let clipboard_image = from_dynamic_image(img)?;
+            clipboard
+                .set_image(clipboard_image)
+                .context("failed to set clipboard image")
+        }
     }
 }

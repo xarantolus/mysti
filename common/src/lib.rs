@@ -1,3 +1,4 @@
+use core::fmt::{self, Debug, Formatter};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -5,11 +6,21 @@ pub enum ActionMessage {
     Clipboard(ClipboardContent),
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ClipboardContent {
     Text(String),
     Image(Vec<u8>),
     None,
+}
+
+impl Debug for ClipboardContent {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        match self {
+            ClipboardContent::Text(text) => write!(f, "Text({})", text),
+            ClipboardContent::Image(content) => write!(f, "Image(len={})", content.len()),
+            ClipboardContent::None => write!(f, "None"),
+        }
+    }
 }
 
 const BINARY_IMAGE_MESSAGE_TYPE: u8 = 3;

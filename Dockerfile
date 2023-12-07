@@ -1,7 +1,7 @@
 # Dockerfile that tries to minimize the size of the image,
 # downloading dependencies in the first stage, building in the second and running in the second stage
 # It must work on both x86_64 and arm64 architectures
-FROM rust:1.74.0 as deps
+FROM rust:1.74-slim-buster as deps
 
 # Download dependencies
 RUN cargo new --bin server
@@ -33,7 +33,7 @@ COPY common/src ./common/src
 RUN cd server && cargo build --release
 
 # Run the project
-FROM alpine
+FROM debian:buster-slim
 
 COPY --from=builder /target/release/mysti-server /mysti-server
 

@@ -1,7 +1,7 @@
 version: '3.7'
 services:
   server:
-    image: quadroberry:3000/philipp/mysti:latest
+    image: ghcr.io/xarantolus/mysti:latest
     build:
       context: .
       dockerfile: Dockerfile

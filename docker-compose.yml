@@ -1,0 +1,25 @@
+version: '3.7'
+services:
+  server:
+    image: quadroberry:3000/philipp/mysti:latest
+    networks:
+      - caddy_network
+
+  caddy:
+    image: caddy:2-alpine
+    ports:
+      - 728:728
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile
+      - caddy_data:/data
+      - caddy_config:/config
+    networks:
+      - caddy_network
+
+volumes:
+  caddy_data:
+  caddy_config:
+
+networks:
+  caddy_network:
+    driver: bridge

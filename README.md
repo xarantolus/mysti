@@ -4,4 +4,4 @@ Linux packages for client (maybe):
 
 Ubuntu:
 
-	sudo apt update && sudo apt install -y libx11-dev xfonts-base xcb libx11-xcb-dev libxcb-render0-dev libxcb-shape0-dev libxcb-xfixes0-dev
+	sudo apt update && sudo apt install -y libx11-dev xfonts-base xcb libx11-xcb-dev libxcb-render0-dev libxcb-shape0-dev libxcb-xfixes0-dev libxcb-shape0-dev libxcb-xfixes0-dev

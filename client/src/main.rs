@@ -220,7 +220,7 @@ impl MystiClient {
 #[tokio::main]
 async fn main() {
     let mut client = MystiClient::new(
-        "http://192.168.2.177:8080".to_string(),
+        "https://misc.010.one:728/".to_string(),
         ImageOutputFormat::Bmp,
     );
 

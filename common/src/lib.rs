@@ -16,7 +16,7 @@ pub enum ClipboardContent {
 impl Debug for ClipboardContent {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         match self {
-            ClipboardContent::Text(text) => write!(f, "Text({})", text),
+            ClipboardContent::Text(text) => write!(f, "Text({:?})", text),
             ClipboardContent::Image(content) => write!(f, "Image(len={})", content.len()),
             ClipboardContent::None => write!(f, "None"),
         }

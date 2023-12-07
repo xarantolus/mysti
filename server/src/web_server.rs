@@ -119,8 +119,9 @@ pub async fn start_web_server(web_port: u16, connection_manager: Arc<Manager>) {
 
     let routes = ws_route.or(broadcast_route);
 
-
-    let addr: SocketAddr = ("[::]:".to_owned() + &web_port.to_string()).parse().unwrap();
+    let addr: SocketAddr = ("[::]:".to_owned() + &web_port.to_string())
+        .parse()
+        .unwrap();
 
     println!("Starting web server on port {}", web_port);
     warp::serve(routes).run(addr).await;

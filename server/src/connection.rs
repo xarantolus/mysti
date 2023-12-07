@@ -1,4 +1,3 @@
-
 use common::{ActionMessage, ClipboardContent};
 
 use std::collections::HashMap;
@@ -11,7 +10,7 @@ pub struct Manager {
     connections: Arc<RwLock<HashMap<u64, UnboundedSender<ActionMessage>>>>,
     counter: AtomicU64,
 
-    pub last_clipboard_content: RwLock<ClipboardContent>
+    pub last_clipboard_content: RwLock<ClipboardContent>,
 }
 
 impl Manager {

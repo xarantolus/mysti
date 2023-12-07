@@ -200,14 +200,12 @@ impl MystiClient {
 
                     self.process_local_event(event, event_return).await;
                 }
-                Event::RemoteEvent(event) => {
-                    match self.process_action_message(&event) {
-                        Ok(_) => (),
-                        Err(err) => {
-                            eprintln!("Error processing action message {:?}: {}", event, err);
-                        }
+                Event::RemoteEvent(event) => match self.process_action_message(&event) {
+                    Ok(_) => (),
+                    Err(err) => {
+                        eprintln!("Error processing action message {:?}: {}", event, err);
                     }
-                }
+                },
                 Event::OutgoingEvent(event) => {
                     outgoing_events
                         .send(event)
@@ -221,7 +219,10 @@ impl MystiClient {
 
 #[tokio::main]
 async fn main() {
-    let mut client = MystiClient::new("http://192.168.2.177:8080".to_string(), ImageOutputFormat::Bmp);
+    let mut client = MystiClient::new(
+        "http://192.168.2.177:8080".to_string(),
+        ImageOutputFormat::Bmp,
+    );
 
     client.run().await.expect("Failed to run client");
 }

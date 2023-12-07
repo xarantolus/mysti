@@ -19,6 +19,12 @@ services:
     networks:
       - caddy_network
 
+  watchtower:
+    image: containrrr/watchtower
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    command: --interval 1800
+
 volumes:
   caddy_data:
   caddy_config:

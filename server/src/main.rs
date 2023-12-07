@@ -8,8 +8,9 @@ mod connection;
 
 #[tokio::main]
 async fn main() {
-    let web_port = 8080;
+    println!("Initializing server..");
 
+    let web_port = 8080;
     let server_data = Arc::new(Manager::new());
 
     start_web_server(web_port, server_data).await;

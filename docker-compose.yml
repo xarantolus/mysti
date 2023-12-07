@@ -1,7 +1,7 @@
 version: '3.7'
 services:
   server:
-    image: ${CONTAINER_REGISTRY_PREFIX:-ghcr.io/xarantolus}/philipp/mysti:latest
+    image: ${CONTAINER_REGISTRY_PREFIX:-ghcr.io/xarantolus}/mysti:latest
     build:
       context: .
       dockerfile: Dockerfile

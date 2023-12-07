@@ -9,7 +9,6 @@ use image::ImageOutputFormat;
 use std::convert::TryInto;
 use std::{thread, time::Duration};
 use tokio::select;
-use tokio::sync::futures;
 use tokio::sync::mpsc::channel;
 use tokio::sync::mpsc::Sender;
 use tokio_tungstenite::connect_async;
@@ -101,7 +100,7 @@ impl MystiClient {
         tokio::spawn(async move {
             loop {
                 // Attempt to connect to server and retry if it fails
-                let mut socket = loop {
+                let socket = loop {
                     match connect_async(moved_server_url.clone()).await {
                         Ok((socket, _)) => break socket,
                         Err(e) => {
@@ -222,7 +221,7 @@ impl MystiClient {
 
 #[tokio::main]
 async fn main() {
-    let mut client = MystiClient::new("http://localhost:8080".to_string(), ImageOutputFormat::Bmp);
+    let mut client = MystiClient::new("http://192.168.2.177:8080".to_string(), ImageOutputFormat::Bmp);
 
     client.run().await.expect("Failed to run client");
 }

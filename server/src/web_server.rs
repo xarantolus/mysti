@@ -2,6 +2,7 @@ use crate::Manager;
 use anyhow::Result;
 use common::{ActionMessage, ClipboardContent};
 use futures_util::{SinkExt, StreamExt};
+use std::net::SocketAddr;
 use std::{convert::Infallible, sync::Arc};
 use tokio::sync::mpsc;
 use warp::ws::{Message, WebSocket};
@@ -118,6 +119,9 @@ pub async fn start_web_server(web_port: u16, connection_manager: Arc<Manager>) {
 
     let routes = ws_route.or(broadcast_route);
 
+
+    let addr: SocketAddr = ("[::]:".to_owned() + &web_port.to_string()).parse().unwrap();
+
     println!("Starting web server on port {}", web_port);
-    warp::serve(routes).run(([127, 0, 0, 1], web_port)).await;
+    warp::serve(routes).run(addr).await;
 }

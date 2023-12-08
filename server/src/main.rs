@@ -8,6 +8,8 @@ mod connection;
 
 #[tokio::main]
 async fn main() {
+    env_logger::init();
+
     println!("Initializing server..");
 
     let web_port = 8080;

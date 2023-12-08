@@ -2,6 +2,7 @@ use crate::Manager;
 use anyhow::Result;
 use common::{ActionMessage, ClipboardContent};
 use futures_util::{SinkExt, StreamExt};
+use log::{debug, error, info};
 use std::net::SocketAddr;
 use std::{convert::Infallible, sync::Arc};
 use tokio::sync::mpsc;
@@ -27,7 +28,7 @@ async fn handle_client_message(
             let mut last_clipboard_content = manager.last_clipboard_content.write().unwrap();
             *last_clipboard_content = content;
 
-            eprintln!("Received clipboard content");
+            debug!("Received clipboard content");
         }
         _ => (),
     }
@@ -45,14 +46,14 @@ async fn handle_connection(ws: WebSocket, manager: Arc<Manager>) {
     tokio::spawn(async move {
         while let Some(action_msg) = websocket_outbound_stream.recv().await {
             let Ok(message) = Message::try_from(action_msg) else {
-                eprintln!("Error converting Action Message to WebSocket message");
+                error!("Error converting Action Message to WebSocket message");
                 continue;
             };
 
             match user_ws_tx.send(message).await {
                 Ok(_) => (),
                 Err(e) => {
-                    eprintln!("Error sending message to WebSocket: {}", e);
+                    error!("Error sending message to WebSocket: {}", e);
                     break;
                 }
             }
@@ -81,22 +82,22 @@ async fn handle_connection(ws: WebSocket, manager: Arc<Manager>) {
         match result {
             Ok(message) => {
                 let Ok(message) = ActionMessage::try_from(message) else {
-                    eprintln!("Error converting WebSocket message to Message");
+                    error!("Error converting WebSocket message to Message");
                     continue;
                 };
 
                 if let Err(e) = handle_client_message(message, manager.clone(), id).await {
-                    eprintln!("Error handling message from WebSocket: {}", e);
+                    error!("Error handling message from WebSocket: {}", e);
                 }
             }
             Err(e) => {
-                eprintln!("Error receiving message from WebSocket: {}", e);
+                error!("Error receiving message from WebSocket: {}", e);
                 break;
             }
         }
     }
 
-    eprintln!("WebSocket connection closed for {}", id);
+    info!("WebSocket connection closed for {}", id);
     manager.remove_connection(id);
 }
 
@@ -123,6 +124,6 @@ pub async fn start_web_server(web_port: u16, connection_manager: Arc<Manager>) {
         .parse()
         .unwrap();
 
-    println!("Starting web server on port {}", web_port);
+    info!("Starting web server on port {}", web_port);
     warp::serve(routes).run(addr).await;
 }

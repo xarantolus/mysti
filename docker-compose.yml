@@ -5,34 +5,29 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    networks:
-      - caddy_network
+    network_mode: host
     restart: unless-stopped
     volumes:
       - ./config.toml:/config.toml
+    cap_add:
+      - NET_ADMIN
 
   caddy:
     image: ${CONTAINER_REGISTRY_PREFIX:-ghcr.io/xarantolus}/mysti-caddy:latest
     build:
       context: .
       dockerfile: Dockerfile.caddy
+    network_mode: host
     ports:
       - 728:728
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile
       - caddy_data:/data
       - caddy_config:/config
-    networks:
-      - caddy_network
     env_file:
       - .env
     restart: unless-stopped
 
-
 volumes:
   caddy_data:
   caddy_config:
-
-networks:
-  caddy_network:
-    driver: bridge

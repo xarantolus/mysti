@@ -10,9 +10,9 @@ use warp::reply::Reply;
 
 use std::{convert::Infallible, sync::Arc};
 use tokio::sync::mpsc;
+use wake_on_lan::MagicPacket;
 use warp::ws::{Message, WebSocket};
 use warp::Filter;
-use wol::send_wol;
 
 fn with_manager(
     manager: Arc<Manager>,
@@ -123,11 +123,9 @@ fn handle_ws_route(ws: warp::ws::Ws, manager: Arc<Manager>) -> impl Reply {
 }
 
 fn handle_wake_on_lan_route(config: Arc<Config>) -> impl Reply {
-    let res = send_wol(
-        config.wake_on_lan.target_addr,
-        config.wake_on_lan.router_addr,
-        None,
-    );
+    let magic_packet = MagicPacket::new(&config.wake_on_lan.target_addr.into_array());
+
+    let res = magic_packet.send();
 
     log::info!("Sending WoL packet to {}", config.wake_on_lan.target_addr);
 

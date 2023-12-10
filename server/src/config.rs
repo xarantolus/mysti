@@ -1,14 +1,8 @@
-use std::{borrow::Cow, net::IpAddr, str::FromStr};
+use std::net::IpAddr;
 
 use anyhow::{Context, Result};
+use macaddr::MacAddr6;
 use serde::Deserialize;
-use wol::MacAddr;
-
-// web_port = 8080
-
-// [wake_on_lan]
-// target_addr = "50-EB-F6-7F-3D-84"
-// router_addr = "255.255.255.255:9"
 
 #[derive(Deserialize, Debug, Clone)]
 pub struct Config {
@@ -18,8 +12,7 @@ pub struct Config {
 
 #[derive(Deserialize, Debug, Clone)]
 pub struct WakeOnLanConfig {
-    #[serde(deserialize_with = "deserialize_mac_addr")]
-    pub target_addr: MacAddr,
+    pub target_addr: MacAddr6,
     pub router_addr: Option<IpAddr>,
 }
 
@@ -31,11 +24,11 @@ pub fn parse_file(name: &str) -> Result<Config> {
     Ok(config)
 }
 
-fn deserialize_mac_addr<'de, D>(deserializer: D) -> Result<MacAddr, D::Error>
-where
-    D: serde::Deserializer<'de>,
-{
-    let s: Cow<str> = serde::Deserialize::deserialize(deserializer)?;
-    MacAddr::from_str(&s)
-        .map_err(|e| serde::de::Error::custom(format!("Failed to parse MAC address: {}", e)))
+#[cfg(test)]
+mod tests {
+    // parse normal config file to see if it works
+    #[test]
+    fn parse_config() {
+        let _ = super::parse_file("config.toml").unwrap();
+    }
 }

@@ -1,5 +1,5 @@
-web_port = 8080
+web_port = 43853
 
 [wake_on_lan]
-target_addr = "50:EB:F6:7F:3D:84"
+target_addr = [0x50, 0xEB, 0xF6, 0x7F, 0x3D, 0x84]
 router_addr = "255.255.255.255"

@@ -8,6 +8,8 @@ services:
     networks:
       - caddy_network
     restart: unless-stopped
+    volumes:
+      - ./config.toml:/config.toml
 
   caddy:
     image: ${CONTAINER_REGISTRY_PREFIX:-ghcr.io/xarantolus}/mysti-caddy:latest

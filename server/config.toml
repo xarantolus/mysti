@@ -1,0 +1,5 @@
+web_port = 8080
+
+[wake_on_lan]
+target_addr = "50:EB:F6:7F:3D:84"
+router_addr = "255.255.255.255"

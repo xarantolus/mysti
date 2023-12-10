@@ -17,4 +17,6 @@ FROM arm64v8/debian:buster-slim
 
 COPY --from=builder /target/aarch64-unknown-linux-gnu/release/mysti-server /mysti-server
 
+ENV RUST_LOG=info
+
 CMD ["/mysti-server"]

@@ -1,18 +1,28 @@
+use crate::config::Config;
 use crate::Manager;
 use anyhow::Result;
 use common::{ActionMessage, ClipboardContent};
 use futures_util::{SinkExt, StreamExt};
 use log::{debug, error, info};
 use std::net::SocketAddr;
+use warp::reply::Reply;
+
 use std::{convert::Infallible, sync::Arc};
 use tokio::sync::mpsc;
 use warp::ws::{Message, WebSocket};
 use warp::Filter;
+use wol::send_wol;
 
 fn with_manager(
     manager: Arc<Manager>,
 ) -> impl Filter<Extract = (Arc<Manager>,), Error = Infallible> + Clone {
     warp::any().map(move || manager.clone())
+}
+
+fn with_config(
+    config: Arc<Config>,
+) -> impl Filter<Extract = (Arc<Config>,), Error = Infallible> + Clone {
+    warp::any().map(move || config.clone())
 }
 
 async fn handle_client_message(
@@ -101,7 +111,7 @@ async fn handle_connection(ws: WebSocket, manager: Arc<Manager>) {
     manager.remove_connection(id);
 }
 
-pub async fn start_web_server(web_port: u16, connection_manager: Arc<Manager>) {
+pub async fn start_web_server(config: &Config, connection_manager: Arc<Manager>) {
     let ws_route = warp::path("ws")
         .and(warp::ws())
         .and(with_manager(connection_manager.clone()))
@@ -118,12 +128,38 @@ pub async fn start_web_server(web_port: u16, connection_manager: Arc<Manager>) {
             warp::reply()
         });
 
-    let routes = ws_route.or(broadcast_route);
+    let wake_on_lan_route = warp::path("wol")
+        .and(warp::post())
+        .and(with_config(Arc::new(config.clone())))
+        .map(|config: Arc<Config>| {
+            let res = send_wol(
+                config.wake_on_lan.target_addr,
+                config.wake_on_lan.router_addr,
+                None,
+            );
 
-    let addr: SocketAddr = ("[::]:".to_owned() + &web_port.to_string())
+            log::info!("Sending WoL packet to {}", config.wake_on_lan.target_addr);
+
+            match res {
+                Ok(()) => warp::reply::with_status(
+                    warp::reply::html("Starting PC"),
+                    warp::http::StatusCode::OK,
+                )
+                .into_response(),
+                Err(e) => warp::reply::with_status(
+                    warp::reply::json(&e.to_string()),
+                    warp::http::StatusCode::INTERNAL_SERVER_ERROR,
+                )
+                .into_response(),
+            }
+        });
+
+    let routes = ws_route.or(broadcast_route).or(wake_on_lan_route);
+
+    let addr: SocketAddr = ("[::]:".to_owned() + &config.web_port.to_string())
         .parse()
         .unwrap();
 
-    info!("Starting web server on port {}", web_port);
+    info!("Starting web server on port {}", config.web_port);
     warp::serve(routes).run(addr).await;
 }

@@ -111,48 +111,61 @@ async fn handle_connection(ws: WebSocket, manager: Arc<Manager>) {
     manager.remove_connection(id);
 }
 
+fn handle_ws_route(
+    ws: warp::ws::Ws,
+    manager: Arc<Manager>,
+) -> impl Reply {
+    ws.on_upgrade(move |socket| handle_connection(socket, manager))
+}
+
+fn handle_broadcast_route(
+    message: ActionMessage,
+    manager: Arc<Manager>,
+) -> impl Reply {
+    manager.broadcast(&message, None);
+    warp::reply()
+}
+
+fn handle_wake_on_lan_route(
+    config: Arc<Config>,
+) -> impl Reply {
+    let res = send_wol(
+        config.wake_on_lan.target_addr,
+        config.wake_on_lan.router_addr,
+        None,
+    );
+
+    log::info!("Sending WoL packet to {}", config.wake_on_lan.target_addr);
+
+    match res {
+        Ok(()) => {
+            warp::reply::with_status(warp::reply::html("Starting PC"), warp::http::StatusCode::OK)
+                .into_response()
+        }
+        Err(e) => warp::reply::with_status(
+            warp::reply::json(&e.to_string()),
+            warp::http::StatusCode::INTERNAL_SERVER_ERROR,
+        )
+        .into_response(),
+    }
+}
+
 pub async fn start_web_server(config: &Config, connection_manager: Arc<Manager>) {
     let ws_route = warp::path("ws")
         .and(warp::ws())
         .and(with_manager(connection_manager.clone()))
-        .map(|ws: warp::ws::Ws, manager: Arc<Manager>| {
-            ws.on_upgrade(move |socket| handle_connection(socket, manager))
-        });
+        .map(handle_ws_route);
 
     let broadcast_route = warp::path("broadcast")
         .and(warp::post())
         .and(warp::body::json())
         .and(with_manager(connection_manager.clone()))
-        .map(|message: ActionMessage, manager: Arc<Manager>| {
-            manager.broadcast(&message, None);
-            warp::reply()
-        });
+        .map(handle_broadcast_route);
 
     let wake_on_lan_route = warp::path("wol")
         .and(warp::post())
         .and(with_config(Arc::new(config.clone())))
-        .map(|config: Arc<Config>| {
-            let res = send_wol(
-                config.wake_on_lan.target_addr,
-                config.wake_on_lan.router_addr,
-                None,
-            );
-
-            log::info!("Sending WoL packet to {}", config.wake_on_lan.target_addr);
-
-            match res {
-                Ok(()) => warp::reply::with_status(
-                    warp::reply::html("Starting PC"),
-                    warp::http::StatusCode::OK,
-                )
-                .into_response(),
-                Err(e) => warp::reply::with_status(
-                    warp::reply::json(&e.to_string()),
-                    warp::http::StatusCode::INTERNAL_SERVER_ERROR,
-                )
-                .into_response(),
-            }
-        });
+        .map(handle_wake_on_lan_route);
 
     let routes = ws_route.or(broadcast_route).or(wake_on_lan_route);
 

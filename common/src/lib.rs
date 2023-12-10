@@ -1,9 +1,12 @@
 use core::fmt::{self, Debug, Formatter};
 use serde::{Deserialize, Serialize};
 
+pub mod action;
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ActionMessage {
     Clipboard(ClipboardContent),
+    Action(action::Action),
 }
 
 #[derive(Clone, PartialEq, Eq, Serialize, Deserialize)]

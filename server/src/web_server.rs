@@ -1,6 +1,7 @@
 use crate::config::Config;
 use crate::Manager;
 use anyhow::Result;
+use common::action::ActionWrapper;
 use common::{ActionMessage, ClipboardContent};
 use futures_util::{SinkExt, StreamExt};
 use log::{debug, error, info};
@@ -30,18 +31,24 @@ async fn handle_client_message(
     manager: Arc<Manager>,
     sender_id: u64,
 ) -> Result<()> {
-    manager.broadcast(&message, Some(sender_id));
-
     // Sometimes we have custom logic for certain messages.
-    match message {
+    match &message {
         ActionMessage::Clipboard(content) => {
             let mut last_clipboard_content = manager.last_clipboard_content.write().unwrap();
-            *last_clipboard_content = content;
+
+            // if equal content, stop
+            if *last_clipboard_content == content.clone() {
+                return Ok(());
+            }
+
+            *last_clipboard_content = content.clone();
 
             debug!("Received clipboard content");
         }
         _ => (),
     }
+
+    manager.broadcast(&message, Some(sender_id));
 
     Ok(())
 }
@@ -111,24 +118,11 @@ async fn handle_connection(ws: WebSocket, manager: Arc<Manager>) {
     manager.remove_connection(id);
 }
 
-fn handle_ws_route(
-    ws: warp::ws::Ws,
-    manager: Arc<Manager>,
-) -> impl Reply {
+fn handle_ws_route(ws: warp::ws::Ws, manager: Arc<Manager>) -> impl Reply {
     ws.on_upgrade(move |socket| handle_connection(socket, manager))
 }
 
-fn handle_broadcast_route(
-    message: ActionMessage,
-    manager: Arc<Manager>,
-) -> impl Reply {
-    manager.broadcast(&message, None);
-    warp::reply()
-}
-
-fn handle_wake_on_lan_route(
-    config: Arc<Config>,
-) -> impl Reply {
+fn handle_wake_on_lan_route(config: Arc<Config>) -> impl Reply {
     let res = send_wol(
         config.wake_on_lan.target_addr,
         config.wake_on_lan.router_addr,
@@ -150,24 +144,30 @@ fn handle_wake_on_lan_route(
     }
 }
 
+/// get a JSON message like {"action": "shutdown"} and broadcast it as an ActionMessage::Action
+fn handle_action_route(wrapper: ActionWrapper, manager: Arc<Manager>) -> impl Reply {
+    manager.broadcast(&ActionMessage::Action(wrapper.action), None);
+    warp::reply::html("OK")
+}
+
 pub async fn start_web_server(config: &Config, connection_manager: Arc<Manager>) {
     let ws_route = warp::path("ws")
         .and(warp::ws())
         .and(with_manager(connection_manager.clone()))
         .map(handle_ws_route);
 
-    let broadcast_route = warp::path("broadcast")
-        .and(warp::post())
-        .and(warp::body::json())
-        .and(with_manager(connection_manager.clone()))
-        .map(handle_broadcast_route);
-
     let wake_on_lan_route = warp::path("wol")
         .and(warp::post())
         .and(with_config(Arc::new(config.clone())))
         .map(handle_wake_on_lan_route);
 
-    let routes = ws_route.or(broadcast_route).or(wake_on_lan_route);
+    let action_route = warp::path!("actions" / "create")
+        .and(warp::post())
+        .and(warp::body::json())
+        .and(with_manager(connection_manager.clone()))
+        .map(handle_action_route);
+
+    let routes = ws_route.or(action_route).or(wake_on_lan_route);
 
     let addr: SocketAddr = ("[::]:".to_owned() + &config.web_port.to_string())
         .parse()

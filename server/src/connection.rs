@@ -1,4 +1,5 @@
 use common::{ActionMessage, ClipboardContent};
+use log::info;
 
 use std::collections::HashMap;
 use std::sync::atomic::AtomicU64;
@@ -44,6 +45,16 @@ impl Manager {
     // Broadcast a message to all WebSocket connections, except for the sender if given.
     pub fn broadcast(&self, message: &ActionMessage, sender: Option<u64>) {
         let connections = self.connections.read().unwrap();
+
+        info!(
+            "Broadcasting {}message: {:?}",
+            if sender.is_some() {
+                sender.unwrap().to_string() + " "
+            } else {
+                "".to_string()
+            },
+            message
+        );
 
         for (_, tx) in connections.iter().filter(|(id, _)| {
             if let Some(sender_id) = sender {

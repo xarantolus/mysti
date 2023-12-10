@@ -1,7 +1,7 @@
 use crate::config::Config;
 use crate::Manager;
 use anyhow::Result;
-use common::action::ActionWrapper;
+use common::action::Action;
 use common::{ActionMessage, ClipboardContent};
 use futures_util::{SinkExt, StreamExt};
 use log::{debug, error, info};
@@ -143,8 +143,8 @@ fn handle_wake_on_lan_route(config: Arc<Config>) -> impl Reply {
 }
 
 /// get a JSON message like {"action": "shutdown"} and broadcast it as an ActionMessage::Action
-fn handle_action_route(wrapper: ActionWrapper, manager: Arc<Manager>) -> impl Reply {
-    manager.broadcast(&ActionMessage::Action(wrapper.action), None);
+fn handle_action_route(wrapper: Action, manager: Arc<Manager>) -> impl Reply {
+    manager.broadcast(&ActionMessage::Action(wrapper), None);
     warp::reply::html("OK")
 }
 

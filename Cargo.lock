@@ -200,6 +200,8 @@ dependencies = [
  "serde_json",
  "tokio-tungstenite 0.21.0",
  "warp",
+ "winapi",
+ "xdotool",
 ]
 
 [[package]]
@@ -2122,6 +2124,12 @@ dependencies = [
  "log",
  "quick-xml",
 ]
+
+[[package]]
+name = "xdotool"
+version = "0.0.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2b1e9d309fb1089c718058e3e5d6010c5b0a55f7224262806ad659e408d3f222"
 
 [[package]]
 name = "zune-inflate"

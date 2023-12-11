@@ -79,7 +79,7 @@ fn logoff() -> Result<()> {
 
         Command::new("loginctl")
             .arg("terminate-user")
-            .arg("$(whoami)")
+            .arg("philipp")
             .spawn()
             .context("Failed to logoff")?;
 

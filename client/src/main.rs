@@ -133,8 +133,10 @@ impl MystiClient {
                                 }
                             };
 
-                            socket_sender.send(message).await.expect("Failed to send outgoing event");
-                            continue;
+                            if let Err(e) = socket_sender.send(message).await {
+                                eprintln!("Failed to send message to server: {}", e);
+                                break;
+                            }
                         }
                         event = socket_receiver.next() => {
                             println!("Received remote event: {:?}", event);

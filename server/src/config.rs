@@ -8,6 +8,7 @@ use serde::Deserialize;
 pub struct Config {
     pub web_port: u16,
     pub wake_on_lan: WakeOnLanConfig,
+    pub token: String,
 }
 
 #[derive(Deserialize, Debug, Clone)]

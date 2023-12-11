@@ -95,6 +95,7 @@ impl MystiClient {
                 _ => return Err(anyhow::anyhow!("Invalid scheme")),
             })
             .map_err(|_| anyhow::anyhow!("Failed to set scheme"))?;
+        server_url.set_query(Some("token=c8e974b3313f0d67f66eaf449b3df7p785c7bb6eaeade7e5b1cfba3a9ddc48ed6"));
 
         let (remote_event, mut remote_receiver) = channel::<ActionMessage>(10);
         let (outgoing_events, mut outgoing_receiver) = channel::<ActionMessage>(10);

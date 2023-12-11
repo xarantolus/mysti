@@ -5,6 +5,7 @@ use common::action::Action;
 use common::{ActionMessage, ClipboardContent};
 use futures_util::{SinkExt, StreamExt};
 use log::{debug, error, info};
+use warp::reject::Rejection;
 use std::net::SocketAddr;
 use warp::reply::Reply;
 
@@ -118,11 +119,11 @@ async fn handle_connection(ws: WebSocket, manager: Arc<Manager>) {
     manager.remove_connection(id);
 }
 
-fn handle_ws_route(ws: warp::ws::Ws, manager: Arc<Manager>) -> impl Reply {
+fn handle_ws_route(_: bool, ws: warp::ws::Ws, manager: Arc<Manager>) -> impl Reply {
     ws.on_upgrade(move |socket| handle_connection(socket, manager))
 }
 
-fn handle_wake_on_lan_route(config: Arc<Config>) -> impl Reply {
+fn handle_wake_on_lan_route(_: bool, config: Arc<Config>) -> impl Reply {
     let magic_packet = MagicPacket::new(&config.wake_on_lan.target_addr.into_array());
 
     let res = magic_packet.send();
@@ -143,23 +144,40 @@ fn handle_wake_on_lan_route(config: Arc<Config>) -> impl Reply {
 }
 
 /// get a JSON message like {"action": "shutdown"} and broadcast it as an ActionMessage::Action
-fn handle_action_route(wrapper: Action, manager: Arc<Manager>) -> impl Reply {
+fn handle_action_route(_: bool, wrapper: Action, manager: Arc<Manager>) -> impl Reply {
     manager.broadcast(&ActionMessage::Action(wrapper), None);
     warp::reply::html("OK")
 }
 
+// Define a struct to represent the query parameters
+#[derive(serde::Deserialize)]
+struct AuthQuery {
+    token: String,
+}
+
+// Define a filter for authentication
+fn with_auth(token: String) -> impl Filter<Extract = (bool,), Error = Rejection> + Clone {
+    warp::any()
+        .and(warp::filters::query::query::<AuthQuery>())
+        .map(move |query: AuthQuery| query.token == token)
+}
+
+
 pub async fn start_web_server(config: &Config, connection_manager: Arc<Manager>) {
     let ws_route = warp::path("ws")
+        .and(with_auth(config.token.to_string()))
         .and(warp::ws())
         .and(with_manager(connection_manager.clone()))
         .map(handle_ws_route);
 
     let wake_on_lan_route = warp::path("wol")
+        .and(with_auth(config.token.to_string()))
         .and(warp::post())
         .and(with_config(Arc::new(config.clone())))
         .map(handle_wake_on_lan_route);
 
     let action_route = warp::path!("actions" / "create")
+        .and(with_auth(config.token.to_string()))
         .and(warp::post())
         .and(warp::body::json())
         .and(with_manager(connection_manager.clone()))

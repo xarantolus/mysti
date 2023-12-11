@@ -149,6 +149,17 @@ fn handle_action_route(_: bool, wrapper: Action, manager: Arc<Manager>) -> impl 
     warp::reply::html("OK")
 }
 
+fn handle_clipboard_route(_: bool, manager: Arc<Manager>) -> impl Reply {
+    let last_clipboard_content = manager.last_clipboard_content.read().unwrap();
+
+    let text = match last_clipboard_content.clone() {
+        ClipboardContent::Text(text) => text,
+        _ => "No clipboard content".to_string(),
+    };
+
+    warp::reply::html(text)
+}
+
 // Define a struct to represent the query parameters
 #[derive(serde::Deserialize)]
 struct AuthQuery {
@@ -183,7 +194,13 @@ pub async fn start_web_server(config: &Config, connection_manager: Arc<Manager>)
         .and(with_manager(connection_manager.clone()))
         .map(handle_action_route);
 
-    let routes = ws_route.or(action_route).or(wake_on_lan_route);
+    let clipboard_route = warp::path!("devices" / "clipboard")
+        .and(with_auth(config.token.to_string()))
+        .and(warp::get())
+        .and(with_manager(connection_manager.clone()))
+        .map(handle_clipboard_route);
+
+    let routes = ws_route.or(action_route).or(wake_on_lan_route).or(clipboard_route);
 
     let addr: SocketAddr = ("[::]:".to_owned() + &config.web_port.to_string())
         .parse()

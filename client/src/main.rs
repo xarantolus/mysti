@@ -176,8 +176,20 @@ impl MystiClient {
                             remote_event.send(action_message).await.expect("Failed to send remote event");
                         }
                         _ = ping_interval.tick() => {
-                            if let Err(e) = socket_sender.send(tokio_tungstenite::tungstenite::Message::Ping(vec![])).await {
+                            if let Err(e) = socket_sender.send(tokio_tungstenite::tungstenite::Message::Ping(vec![1,2,3,4])).await {
                                 eprintln!("Failed to send ping: {}", e);
+                                break;
+                            }
+
+                            // Receive pong
+                            let Some(Ok(event)) = socket_receiver.next().await else {
+                                eprintln!("Failed to receive pong");
+                                break;
+                            };
+                            if let tokio_tungstenite::tungstenite::Message::Pong(_) = event {
+                                continue;
+                            } else {
+                                eprintln!("Received non-pong message");
                                 break;
                             }
                         }

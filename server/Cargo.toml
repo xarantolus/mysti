@@ -9,6 +9,7 @@ edition = "2021"
 anyhow = "1.0.75"
 common = { path = "../common" }
 env_logger = "0.10.1"
+futures = "0.3.29"
 futures-util = "0.3.29"
 log = "0.4.20"
 macaddr = { version = "1.0.1", features = ["serde"] }

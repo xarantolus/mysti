@@ -30,7 +30,7 @@ fn with_config(
 async fn handle_client_message(
     message: ActionMessage,
     manager: Arc<Manager>,
-    sender_id: u64,
+    sender_id: Option<u64>,
 ) -> Result<()> {
     // Sometimes we have custom logic for certain messages.
     match &message {
@@ -49,7 +49,7 @@ async fn handle_client_message(
         _ => (),
     }
 
-    manager.broadcast(&message, Some(sender_id));
+    manager.broadcast(&message, sender_id);
 
     Ok(())
 }
@@ -104,7 +104,7 @@ async fn handle_connection(ws: WebSocket, manager: Arc<Manager>) {
                     continue;
                 };
 
-                if let Err(e) = handle_client_message(message, manager.clone(), id).await {
+                if let Err(e) = handle_client_message(message, manager.clone(), Some(id)).await {
                     error!("Error handling message from WebSocket: {}", e);
                 }
             }
@@ -149,7 +149,7 @@ fn handle_action_route(_: bool, wrapper: Action, manager: Arc<Manager>) -> impl 
     warp::reply::html("OK")
 }
 
-fn handle_clipboard_route(_: bool, manager: Arc<Manager>) -> impl Reply {
+fn handle_read_clipboard_route(_: bool, manager: Arc<Manager>) -> impl Reply {
     let last_clipboard_content = manager.last_clipboard_content.read().unwrap();
 
     let text = match last_clipboard_content.clone() {
@@ -158,6 +158,20 @@ fn handle_clipboard_route(_: bool, manager: Arc<Manager>) -> impl Reply {
     };
 
     warp::reply::html(text)
+}
+
+fn handle_write_clipboard_route(_: bool, body: warp::hyper::body::Bytes, manager: Arc<Manager>) -> impl Reply {
+    let text = String::from_utf8_lossy(&body).to_string();
+
+    let result = futures::executor::block_on(handle_client_message(ActionMessage::Clipboard(ClipboardContent::Text(text)), manager, None));
+
+    match result {
+        Ok(_) => warp::reply::html("OK").into_response(),
+        Err(e) => warp::reply::with_status(
+            warp::reply::json(&e.to_string()),
+            warp::http::StatusCode::INTERNAL_SERVER_ERROR,
+        ).into_response()
+    }
 }
 
 // Define a struct to represent the query parameters
@@ -194,13 +208,21 @@ pub async fn start_web_server(config: &Config, connection_manager: Arc<Manager>)
         .and(with_manager(connection_manager.clone()))
         .map(handle_action_route);
 
-    let clipboard_route = warp::path!("devices" / "clipboard")
+    let clipboard_read_route = warp::path!("devices" / "clipboard")
         .and(with_auth(config.token.to_string()))
         .and(warp::get())
         .and(with_manager(connection_manager.clone()))
-        .map(handle_clipboard_route);
+        .map(handle_read_clipboard_route);
 
-    let routes = ws_route.or(action_route).or(wake_on_lan_route).or(clipboard_route);
+    let clipboard_write_route = warp::path!("devices" / "clipboard")
+        .and(with_auth(config.token.to_string()))
+        .and(warp::post())
+        .and(warp::body::content_length_limit(1024 * 32))
+        .and(warp::body::bytes())
+        .and(with_manager(connection_manager.clone()))
+        .map(handle_write_clipboard_route);
+
+    let routes = ws_route.or(action_route).or(wake_on_lan_route).or(clipboard_read_route).or(clipboard_write_route);
 
     let addr: SocketAddr = ("[::]:".to_owned() + &config.web_port.to_string())
         .parse()

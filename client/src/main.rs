@@ -105,6 +105,8 @@ impl MystiClient {
         let moved_server_url = server_url.clone();
         tokio::spawn(async move {
             loop {
+                println!("Connecting to {}", moved_server_url);
+
                 // Attempt to connect to server and retry if it fails
                 let socket = loop {
                     match connect_async(moved_server_url.clone()).await {
@@ -152,6 +154,7 @@ impl MystiClient {
 
                             match event {
                                 tokio_tungstenite::tungstenite::Message::Close(_) => {
+                                    eprintln!("Server sent close");
                                     break;
                                 }
                                 tokio_tungstenite::tungstenite::Message::Pong(_) => {

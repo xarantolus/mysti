@@ -5,8 +5,8 @@ use common::action::Action;
 use common::{ActionMessage, ClipboardContent};
 use futures_util::{SinkExt, StreamExt};
 use log::{debug, error, info};
-use warp::reject::Rejection;
 use std::net::SocketAddr;
+use warp::reject::Rejection;
 use warp::reply::Reply;
 
 use std::{convert::Infallible, sync::Arc};
@@ -160,17 +160,26 @@ fn handle_read_clipboard_route(_: bool, manager: Arc<Manager>) -> impl Reply {
     warp::reply::html(text)
 }
 
-fn handle_write_clipboard_route(_: bool, body: warp::hyper::body::Bytes, manager: Arc<Manager>) -> impl Reply {
+fn handle_write_clipboard_route(
+    _: bool,
+    body: warp::hyper::body::Bytes,
+    manager: Arc<Manager>,
+) -> impl Reply {
     let text = String::from_utf8_lossy(&body).to_string();
 
-    let result = futures::executor::block_on(handle_client_message(ActionMessage::Clipboard(ClipboardContent::Text(text)), manager, None));
+    let result = futures::executor::block_on(handle_client_message(
+        ActionMessage::Clipboard(ClipboardContent::Text(text.clone())),
+        manager,
+        None,
+    ));
 
     match result {
-        Ok(_) => warp::reply::html("OK").into_response(),
+        Ok(_) => warp::reply::html(text).into_response(),
         Err(e) => warp::reply::with_status(
             warp::reply::json(&e.to_string()),
             warp::http::StatusCode::INTERNAL_SERVER_ERROR,
-        ).into_response()
+        )
+        .into_response(),
     }
 }
 
@@ -186,7 +195,6 @@ fn with_auth(token: String) -> impl Filter<Extract = (bool,), Error = Rejection>
         .and(warp::filters::query::query::<AuthQuery>())
         .map(move |query: AuthQuery| query.token == token)
 }
-
 
 pub async fn start_web_server(config: &Config, connection_manager: Arc<Manager>) {
     let ws_route = warp::path("ws")
@@ -222,7 +230,11 @@ pub async fn start_web_server(config: &Config, connection_manager: Arc<Manager>)
         .and(with_manager(connection_manager.clone()))
         .map(handle_write_clipboard_route);
 
-    let routes = ws_route.or(action_route).or(wake_on_lan_route).or(clipboard_read_route).or(clipboard_write_route);
+    let routes = ws_route
+        .or(action_route)
+        .or(wake_on_lan_route)
+        .or(clipboard_read_route)
+        .or(clipboard_write_route);
 
     let addr: SocketAddr = ("[::]:".to_owned() + &config.web_port.to_string())
         .parse()

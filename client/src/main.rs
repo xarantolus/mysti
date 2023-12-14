@@ -108,21 +108,28 @@ impl MystiClient {
                 println!("Connecting to {}", moved_server_url);
 
                 // Attempt to connect to server and retry if it fails
-                let socket = loop {
+                let socket = {
+                    let mut fail_count = 0;
+                    loop {
+
                     match connect_async(moved_server_url.clone()).await {
                         Ok((socket, _)) => break socket,
                         Err(e) => {
-                            eprintln!("Failed to connect to server: {}", e);
+                            if fail_count % 12 == 0 {
+                                eprintln!("Failed to connect to server: {}", e);
+                            }
+                            fail_count += 1;
+
                             tokio::time::sleep(Duration::from_secs(5)).await;
                         }
                     };
-                };
+                }};
 
                 println!("Connected to server");
 
                 let (mut socket_sender, mut socket_receiver) = socket.split();
 
-                let mut ping_interval = tokio::time::interval(Duration::from_secs(30));
+                let mut ping_interval = tokio::time::interval(Duration::from_secs(60));
 
                 loop {
                     // Read something from the socket OR write something to the socket when we get an outgoing event
@@ -176,13 +183,13 @@ impl MystiClient {
                             remote_event.send(action_message).await.expect("Failed to send remote event");
                         }
                         _ = ping_interval.tick() => {
-                            if let Err(e) = socket_sender.send(tokio_tungstenite::tungstenite::Message::Ping(vec![1,2,3,4])).await {
+                            if let Err(e) = tokio::time::timeout(Duration::from_secs(5), socket_sender.send(tokio_tungstenite::tungstenite::Message::Ping(vec![1,2,3,4]))).await {
                                 eprintln!("Failed to send ping: {}", e);
                                 break;
                             }
 
                             // Receive pong
-                            let Some(Ok(event)) = socket_receiver.next().await else {
+                            let Ok(Some(Ok(event))) = tokio::time::timeout(Duration::from_secs(5), socket_receiver.next()).await else {
                                 eprintln!("Failed to receive pong");
                                 break;
                             };
@@ -197,7 +204,7 @@ impl MystiClient {
                 }
 
                 println!("Disconnected from server - reconnecting in 5 seconds");
-                thread::sleep(Duration::from_secs(5));
+                tokio::time::sleep(Duration::from_secs(5)).await;
             }
         });
 

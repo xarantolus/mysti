@@ -80,7 +80,7 @@ jobs:
       working-directory: client
 
     - name: Rename binary
-      run: mv client/target/release/mysti-client mysti-client-fedora
+      run: find . -type f -name mysti-client -exec mv {} mysti-client-fedora \;
 
     - name: Upload artifact
       uses: actions/upload-artifact@v2

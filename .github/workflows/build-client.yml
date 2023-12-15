@@ -59,26 +59,28 @@ jobs:
         path: ./mysti-client-ubuntu
 
   build-fedora:
-    runs-on: fedora-latest
+    runs-on: ubuntu-latest
+
+    container:
+      image: fedora:latest
 
     steps:
     - uses: actions/checkout@v2
 
     - name: Install additional packages
-      run: sudo dnf install -y libX11-devel xorg-x11-fonts-misc xorg-x11-font-utils
+      run: dnf install -y libX11-devel xorg-x11-fonts-misc xorg-x11-font-utils
 
     - name: Install Rust
-      uses: actions-rs/toolchain@v1
-      with:
-        toolchain: stable
-        override: true
+      run: |
+        curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+        source $HOME/.cargo/env
 
     - name: Build
       run: cargo build --release
       working-directory: client
 
     - name: Rename binary
-      run: mv target/release/mysti-client mysti-client-fedora
+      run: mv client/target/release/mysti-client mysti-client-fedora
 
     - name: Upload artifact
       uses: actions/upload-artifact@v2

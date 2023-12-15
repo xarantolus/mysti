@@ -68,7 +68,7 @@ jobs:
     - uses: actions/checkout@v2
 
     - name: Install additional packages
-      run: dnf install -y libX11-devel xorg-x11-fonts-misc xorg-x11-font-utils
+      run: dnf install -y libX11-devel xorg-x11-fonts-misc xorg-x11-font-utils build-essential
 
     - name: Install Rust
       run: |

@@ -106,4 +106,4 @@ jobs:
         tag_name: latest
         body: |
           This is the latest release of the Mysti client.
-
+        token: ${{ secrets.GITHUB_TOKEN }}

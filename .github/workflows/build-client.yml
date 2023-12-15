@@ -76,7 +76,7 @@ jobs:
         source $HOME/.cargo/env
 
     - name: Build
-      run: cargo build --release
+      run: source $HOME/.cargo/env && cargo build --release
       working-directory: client
 
     - name: Rename binary

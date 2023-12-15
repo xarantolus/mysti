@@ -1,0 +1,107 @@
+name: Build and Release
+
+on:
+  push:
+    branches: [ "main" ]
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Install Rust
+      uses: actions-rs/toolchain@v1
+      with:
+        toolchain: stable
+        override: true
+
+    - name: Build
+      run: cargo build --release
+      working-directory: client
+
+    - name: Rename binary
+      run: mv target/release/mysti-client.exe mysti-client-windows.exe
+
+    - name: Upload artifact
+      uses: actions/upload-artifact@v2
+      with:
+        name: mysti-client-windows
+        path: ./mysti-client-windows.exe
+
+  build-ubuntu:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Install additional packages
+      run: sudo apt-get install -y libx11-dev xfonts-base xcb libx11-xcb-dev libxcb-render0-dev libxcb-shape0-dev libxcb-xfixes0-dev libxcb-shape0-dev libxcb-xfixes0-dev
+
+    - name: Install Rust
+      uses: actions-rs/toolchain@v1
+      with:
+        toolchain: stable
+        override: true
+
+    - name: Build
+      run: cargo build --release
+      working-directory: client
+
+    - name: Rename binary
+      run: mv target/release/mysti-client mysti-client-ubuntu
+
+    - name: Upload artifact
+      uses: actions/upload-artifact@v2
+      with:
+        name: mysti-client-ubuntu
+        path: ./mysti-client-ubuntu
+
+  build-fedora:
+    runs-on: fedora-latest
+
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Install additional packages
+      run: sudo dnf install -y libX11-devel xorg-x11-fonts-misc xorg-x11-font-utils
+
+    - name: Install Rust
+      uses: actions-rs/toolchain@v1
+      with:
+        toolchain: stable
+        override: true
+
+    - name: Build
+      run: cargo build --release
+      working-directory: client
+
+    - name: Rename binary
+      run: mv target/release/mysti-client mysti-client-fedora
+
+    - name: Upload artifact
+      uses: actions/upload-artifact@v2
+      with:
+        name: mysti-client-fedora
+        path: ./mysti-client-fedora
+
+  release:
+    needs: [build-windows, build-ubuntu, build-fedora]
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Download artifacts
+      uses: actions/download-artifact@v2
+
+    - name: Release
+      uses: softprops/action-gh-release@v1
+      with:
+        files: |
+          mysti-client-windows/mysti-client-windows.exe
+          mysti-client-ubuntu/mysti-client-ubuntu
+          mysti-client-fedora/mysti-client-fedora
+        tag_name: latest
+        body: |
+          This is the latest release of the Mysti client.
+

@@ -18,7 +18,7 @@ pub fn client_name() -> String {
 
     // Get distribution name or Windows version
     let dist_name = {
-        let distro : String;
+        let mut distro : Option<String> = None;
 
         #[cfg(target_os = "linux")]
         {
@@ -30,30 +30,34 @@ pub fn client_name() -> String {
                 for line in reader.lines() {
                     if let Ok(line) = line {
                         if line.starts_with("PRETTY_NAME=") {
-                            distro = line
+                            distro = Some(line
                                 .trim_start_matches("PRETTY_NAME=")
                                 .trim_matches('"')
-                                .to_string();
-                            break;
+                                .to_string());
+							break;
                         }
                     }
                 }
             }
+
+			if distro.is_none() {
+				distro = Some("UnknownLinux".to_string());
+			}
         }
 
         #[cfg(target_os = "windows")]
         {
-            distro = Command::new("powershell")
+            distro = Some(Command::new("powershell")
                 .arg("-Command")
                 .arg(
                     "Get-CimInstance Win32_OperatingSystem | Select-Object -ExpandProperty Caption",
                 )
                 .output()
                 .map(|output| String::from_utf8_lossy(&output.stdout).trim().to_string())
-                .unwrap_or_else(|_| "UnknownWindows".to_string())
+                .unwrap_or_else(|_| "UnknownWindows".to_string()))
         }
 
-        distro
+        distro.unwrap_or_else(|| "UnknownOS".to_string())
     };
 
     format!("{} on {} ({})", user_name, hostname, dist_name)

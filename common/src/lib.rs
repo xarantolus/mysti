@@ -31,10 +31,10 @@ const BINARY_IMAGE_MESSAGE_TYPE: u8 = 3;
 use warp::ws::Message as WebSocketMessage;
 
 // Implement conversion from WebSocketMessage to Message and back using serde_json.
-impl TryFrom<WebSocketMessage> for ActionMessage {
+impl TryFrom<&WebSocketMessage> for ActionMessage {
     type Error = anyhow::Error;
 
-    fn try_from(message: WebSocketMessage) -> Result<Self, Self::Error> {
+    fn try_from(message: &WebSocketMessage) -> Result<Self, Self::Error> {
         if message.is_text() {
             match message.to_str() {
                 Ok(msg) => Ok(serde_json::from_str(msg)?),

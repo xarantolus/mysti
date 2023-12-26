@@ -5,7 +5,6 @@ use common::action::Action;
 use common::{ActionMessage, ClipboardContent};
 use futures_util::{SinkExt, StreamExt};
 use log::{debug, error, info};
-use std::collections::HashMap;
 use std::net::SocketAddr;
 use warp::reject::Rejection;
 use warp::reply::Reply;
@@ -28,15 +27,9 @@ fn with_config(
     warp::any().map(move || config.clone())
 }
 
-fn with_device_name() -> impl Filter<Extract = (String,), Error = Rejection> + Clone {
-    warp::any()
-        .and(warp::ext::optional::<HashMap<String, String>>())
-        .and_then(|query: Option<HashMap<String, String>>| async move {
-            let device_name = query
-                .and_then(|q| q.get("device_name").cloned());
-
-            Ok::<_, Rejection>(device_name.map(|s| s.to_string()).unwrap_or("Unknown".to_string()))
-        })
+#[derive(Debug, serde::Deserialize)]
+struct DeviceNameFilter {
+    device_name: String,
 }
 
 async fn handle_client_message(
@@ -113,8 +106,12 @@ async fn handle_connection(ws: WebSocket, manager: Arc<Manager>, device_name: St
     while let Some(result) = user_ws_rx.next().await {
         match result {
             Ok(message) => {
-                let Ok(message) = ActionMessage::try_from(message) else {
-                    error!("Error converting WebSocket message to Message");
+                let Ok(message) = ActionMessage::try_from(&message) else {
+                    if message.is_ping() || message.is_close() {
+                        continue;
+                    }
+
+                    error!("Error converting WebSocket message {:?} to Action Message", message);
                     continue;
                 };
 
@@ -129,12 +126,12 @@ async fn handle_connection(ws: WebSocket, manager: Arc<Manager>, device_name: St
         }
     }
 
-    info!("WebSocket connection closed for {}", id);
+    info!("WebSocket connection closed for {}, now have {} clients", id, manager.client_count());
     manager.remove_connection(id);
 }
 
-fn handle_ws_route(_: bool, device_name: String, ws: warp::ws::Ws, manager: Arc<Manager>) -> impl Reply {
-    ws.on_upgrade(move |socket| handle_connection(socket, manager, device_name))
+fn handle_ws_route(_: bool, device_name: DeviceNameFilter, ws: warp::ws::Ws, manager: Arc<Manager>) -> impl Reply {
+    ws.on_upgrade(move |socket| handle_connection(socket, manager, device_name.device_name))
 }
 
 fn handle_wake_on_lan_route(_: bool, config: Arc<Config>) -> impl Reply {
@@ -197,6 +194,10 @@ fn handle_write_clipboard_route(
     }
 }
 
+fn handle_client_list(_: bool, manager: Arc<Manager>) -> impl Reply {
+    warp::reply::json(&manager.list_clients())
+}
+
 // Define a struct to represent the query parameters
 #[derive(serde::Deserialize)]
 struct AuthQuery {
@@ -213,7 +214,7 @@ fn with_auth(token: String) -> impl Filter<Extract = (bool,), Error = Rejection>
 pub async fn start_web_server(config: &Config, connection_manager: Arc<Manager>) {
     let ws_route = warp::path("ws")
         .and(with_auth(config.token.to_string()))
-        .and(with_device_name())
+        .and(warp::query::<DeviceNameFilter>())
         .and(warp::ws())
         .and(with_manager(connection_manager.clone()))
         .map(handle_ws_route);
@@ -245,9 +246,16 @@ pub async fn start_web_server(config: &Config, connection_manager: Arc<Manager>)
         .and(with_manager(connection_manager.clone()))
         .map(handle_write_clipboard_route);
 
+    let client_list_route = warp::path!("devices")
+        .and(with_auth(config.token.to_string()))
+        .and(warp::get())
+        .and(with_manager(connection_manager.clone()))
+        .map(handle_client_list);
+
     let routes = ws_route
         .or(action_route)
         .or(wake_on_lan_route)
+        .or(client_list_route)
         .or(clipboard_read_route)
         .or(clipboard_write_route);
 

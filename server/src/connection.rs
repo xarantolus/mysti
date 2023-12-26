@@ -8,7 +8,15 @@ use tokio::sync::mpsc::UnboundedSender;
 
 pub struct ClientInfo {
     name: String,
+    pub connected_at: std::time::SystemTime,
     channel: UnboundedSender<ActionMessage>,
+}
+
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct ClientPublicInfo {
+    pub name: String,
+    pub id: usize,
+    pub connected_at: std::time::SystemTime,
 }
 
 pub struct Manager {
@@ -36,6 +44,7 @@ impl Manager {
 
         let mut connections = self.connections.write().unwrap();
         connections.insert(id, ClientInfo{
+            connected_at: std::time::SystemTime::now(),
             name: name.clone(),
             channel: tx.clone(),
         });
@@ -45,6 +54,19 @@ impl Manager {
 
     pub fn client_count(&self) -> usize {
         self.connections.read().unwrap().len()
+    }
+
+    pub fn list_clients(&self) -> Vec<ClientPublicInfo> {
+        let connections = self.connections.read().unwrap();
+
+        connections
+            .iter()
+            .map(|(&id, info)| ClientPublicInfo {
+                name: info.name.clone(),
+                id,
+                connected_at: info.connected_at,
+            })
+            .collect()
     }
 
     // Remove a WebSocket connection from the manager.

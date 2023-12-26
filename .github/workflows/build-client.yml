@@ -100,7 +100,7 @@ jobs:
     - name: Install additional packages
       run: |
         apt-get update && apt-get install -y curl libx11-dev xfonts-base xfonts-utils make automake gcc g++ \
-        linux-headers-amd64 pkg-config openssl libssl-dev mlocate \libxcb-render0 libxcb-render0-dev \
+        linux-headers-amd64 pkg-config openssl libssl-dev mlocate libxcb-render0 libxcb-render0-dev \
         libxcb-shape0 libxcb-shape0-dev libxcb-xfixes0 libxcb-xfixes0-dev
 
     - name: Install Rust

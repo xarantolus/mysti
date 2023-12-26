@@ -98,7 +98,7 @@ jobs:
     - uses: actions/checkout@v2
 
     - name: Install additional packages
-      run: apt-get update && apt-get install -y libx11-dev xfonts-misc xfonts-utils make automake gcc g++ linux-headers-$(uname -r)
+      run: apt-get update && apt-get install -y libx11-dev xfonts-base xfonts-utils make automake gcc g++ linux-headers-amd64
 
     - name: Install Rust
       run: |
@@ -148,38 +148,8 @@ jobs:
         name: mysti-client-archlinux
         path: ./mysti-client-archlinux
 
-  build-centos:
-    runs-on: ubuntu-latest
-
-    container:
-      image: centos:latest
-
-    steps:
-    - uses: actions/checkout@v2
-
-    - name: Install additional packages
-      run: yum install -y libX11-devel xorg-x11-fonts-misc xorg-x11-font-utils make automake gcc gcc-c++ kernel-devel
-
-    - name: Install Rust
-      run: |
-        curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
-        source $HOME/.cargo/env
-
-    - name: Build
-      run: source $HOME/.cargo/env && cargo build --release
-      working-directory: client
-
-    - name: Rename binary
-      run: find . -type f -name mysti-client -exec mv {} mysti-client-centos \;
-
-    - name: Upload artifact
-      uses: actions/upload-artifact@v2
-      with:
-        name: mysti-client-centos
-        path: ./mysti-client-centos
-
   release:
-    needs: [build-windows, build-ubuntu, build-fedora, build-debian, build-archlinux, build-centos]
+    needs: [build-windows, build-ubuntu, build-fedora, build-debian, build-archlinux]
     runs-on: ubuntu-latest
 
     steps:
@@ -190,12 +160,7 @@ jobs:
       uses: softprops/action-gh-release@v1
       with:
         files: |
-          mysti-client-windows/mysti-client-windows.exe
-          mysti-client-ubuntu/mysti-client-ubuntu
-          mysti-client-fedora/mysti-client-fedora
-          mysti-client-debian/mysti-client-debian
-          mysti-client-archlinux/mysti-client-archlinux
-          mysti-client-centos/mysti-client-centos
+          mysti-client-*/mysti-client-*
         tag_name: latest
         body: |
           This is the latest release of the Mysti client.

@@ -1,13 +1,11 @@
-use common::{name::client_name, action::Action};
+use common::{action::Action, client_config::ClientConfig, name::client_name};
 use dialoguer::FuzzySelect;
 
 use crate::rest::post_action;
 
 mod rest;
 
-fn main() {
-    let config = common::client_config::find_parse_config().expect("Failed to parse config");
-
+fn send_action_interactive(config: &ClientConfig) {
     let clients =
         rest::fetch_connected_clients(&config).expect("Failed to fetch connected clients");
 
@@ -40,12 +38,18 @@ fn main() {
     // Now select which action to perform
     let action = FuzzySelect::new()
         .with_prompt("Which action do you want to run?")
-        .items(&client.supported_actions)
+        .items(
+            &client
+                .supported_actions
+                .iter()
+                .map(|(name, _)| name)
+                .collect::<Vec<_>>(),
+        )
         .default(0)
         .interact()
         .unwrap();
 
-    let selected_action = &client.supported_actions[action];
+    let (selected_action, required_args) = &client.supported_actions[action];
 
     let action = Action {
         action: selected_action.clone(),
@@ -59,4 +63,27 @@ fn main() {
     post_action(&config, client.id, &action).expect("Failed to post action");
 
     println!("Sent action.");
+}
+
+fn main() {
+    let config = common::client_config::find_parse_config().expect("Failed to parse config");
+
+    let args = std::env::args().collect::<Vec<_>>();
+    match args.len() {
+        1 => send_action_interactive(&config),
+        2 if match config.wol_shortcut {
+            Some(ref shortcut) => args[1].eq(shortcut),
+            None => false,
+        } =>
+        {
+            rest::send_wol(&config).expect("Failed to send WOL packet");
+            println!("Sent WOL packet");
+        }
+        _ => {
+            // This is where the fun begins
+            unimplemented!(
+                "Arguments are not yet supported. Please use the interactive mode for now."
+            );
+        }
+    }
 }

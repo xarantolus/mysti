@@ -64,7 +64,7 @@ async fn handle_connection(
     ws: WebSocket,
     manager: Arc<Manager>,
     device_name: String,
-    supported_actions: Vec<String>,
+    supported_actions: Vec<(String, usize)>,
 ) {
     let (mut user_ws_tx, mut user_ws_rx) = ws.split();
     let (websocket_writer, mut websocket_outbound_stream) = mpsc::unbounded_channel();
@@ -162,8 +162,13 @@ fn handle_ws_route(
             device_info
                 .supported_actions
                 .split(",")
-                .map(|s| s.to_string())
-                .collect::<Vec<String>>(),
+                .filter_map(|pair| {
+                    let (key, value_str) = pair.split_once(":")?;
+                    let key = key.trim().to_string();
+                    let value = value_str.trim().parse().ok()?;
+                    Some((key, value))
+                })
+                .collect(),
         )
     })
 }

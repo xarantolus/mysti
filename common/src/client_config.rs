@@ -8,6 +8,8 @@ pub struct ClientConfig {
     pub server_host: String,
     pub token: String,
 
+    pub wol_shortcut: Option<String>,
+
     #[serde(default = "Vec::new")]
     pub actions: Vec<ActionDefinition>,
 }

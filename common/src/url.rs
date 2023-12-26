@@ -63,8 +63,7 @@ pub fn generate_request_url(cfg: &ClientConfig, path: &str, scheme: Scheme) -> R
 
     server_url
         .query_pairs_mut()
-        .append_pair("token", &cfg.token)
-        .append_pair("device_name", &crate::name::client_name());
+        .append_pair("token", &cfg.token);
 
     Ok(server_url)
 }

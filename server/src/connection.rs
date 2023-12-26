@@ -11,7 +11,7 @@ pub struct ConnectionInfo {
     name: String,
     pub connected_at: std::time::SystemTime,
     channel: UnboundedSender<ActionMessage>,
-    supported_actions: Vec<String>,
+    supported_actions: Vec<(String, usize)>,
 }
 
 pub struct Manager {
@@ -36,7 +36,7 @@ impl Manager {
         &self,
         tx: &UnboundedSender<ActionMessage>,
         name: &String,
-        supported_actions: Vec<String>,
+        supported_actions: Vec<(String, usize)>,
     ) -> usize {
         let id = self
             .counter

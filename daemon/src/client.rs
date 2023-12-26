@@ -1,8 +1,9 @@
-use crate::clipboard::{Watcher, self};
+use crate::clipboard::{self, Watcher};
 use anyhow::Result;
 use common::action::ActionDefinition;
+use common::name::client_name;
 use common::url;
-use common::{ActionMessage, ClipboardContent, client_config::ClientConfig};
+use common::{client_config::ClientConfig, ActionMessage, ClipboardContent};
 use futures_util::SinkExt;
 use futures_util::StreamExt;
 use image::ImageOutputFormat;
@@ -12,7 +13,6 @@ use tokio::select;
 use tokio::sync::mpsc::channel;
 use tokio::sync::mpsc::Sender;
 use tokio_tungstenite::connect_async;
-
 
 enum LocalEvent {
     ClipboardEvent(ClipboardContent),
@@ -68,7 +68,8 @@ impl MystiClient {
                 clipboard::set_clipboard(&content)?;
             }
             ActionMessage::Action(action) => {
-                let action_definition = ActionDefinition::find_by_name(&action.action, &self.config.actions);
+                let action_definition =
+                    ActionDefinition::find_by_name(&action.action, &self.config.actions);
 
                 match action_definition {
                     Some(action_definition) => {
@@ -95,10 +96,22 @@ impl MystiClient {
         });
 
         // Parse and set the correct URL
-        let mut server_url = url::generate_request_url(&self.config, "/ws", url::Scheme::WebSocket)?;
-        server_url.query_pairs_mut()
-            .append_pair("supported_actions", &self.config.actions.iter().map(|a| a.name.clone()).collect::<Vec<String>>().join(","));
+        let mut server_url =
+            url::generate_request_url(&self.config, "/ws", url::Scheme::WebSocket)?;
 
+        server_url
+            .query_pairs_mut()
+            .append_pair(
+                "supported_actions",
+                &self
+                    .config
+                    .actions
+                    .iter()
+                    .map(|a| format!("{}:{}", a.name, a.required_args()))
+                    .collect::<Vec<String>>()
+                    .join(","),
+            )
+            .append_pair("device_name", &client_name());
 
         let (remote_event, mut remote_receiver) = channel::<ActionMessage>(10);
         let (outgoing_events, mut outgoing_receiver) = channel::<ActionMessage>(10);

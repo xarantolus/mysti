@@ -5,7 +5,7 @@ pub struct ConnectedClientInfo {
     pub name: String,
     pub id: usize,
     pub connected_at: std::time::SystemTime,
-    pub supported_actions: Vec<String>,
+    pub supported_actions: Vec<(String, usize)>,
 }
 
 impl Display for ConnectedClientInfo {

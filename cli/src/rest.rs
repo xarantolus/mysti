@@ -50,3 +50,23 @@ pub fn post_action(cfg: &ClientConfig, client_id: usize, action: &Action) -> any
         ))
     }
 }
+
+pub fn send_wol(cfg: &ClientConfig) -> anyhow::Result<()> {
+    let url = generate_request_url(
+        cfg,
+        "/wol",
+        common::url::Scheme::HTTP,
+    )?;
+
+    let client = reqwest::blocking::Client::new();
+    let response = client.post(url).send()?;
+
+    if response.status().is_success() {
+        Ok(())
+    } else {
+        Err(anyhow::anyhow!(
+            "Request failed with status code: {}",
+            response.status()
+        ))
+    }
+}

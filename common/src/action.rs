@@ -1,4 +1,4 @@
-use std::{process::Command, fmt::Display};
+use std::{fmt::Display, process::Command};
 
 use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
@@ -30,8 +30,44 @@ pub struct ActionDefinition {
 }
 
 impl ActionDefinition {
-    pub fn find_by_name(name: &String, actions: &Vec<ActionDefinition>) -> Option<ActionDefinition> {
+    pub fn find_by_name(
+        name: &String,
+        actions: &Vec<ActionDefinition>,
+    ) -> Option<ActionDefinition> {
         actions.iter().find(|a| &a.name == name).cloned()
+    }
+
+    pub fn required_args(&self) -> usize {
+        // Find the number of arguments in the command_string, as in $1, %2, etc
+        let mut max_arg = 0;
+        if let Some(command_string) = self.command_string().ok() {
+            let mut arg = String::new();
+            let mut expect_digit = false;
+
+            for c in command_string.chars() {
+                if c == '%' || c == '$' {
+                    expect_digit = true;
+                } else if expect_digit && c.is_digit(10) {
+                    arg.push(c);
+                } else if expect_digit {
+                    expect_digit = false;
+                    let arg_num = arg.parse::<usize>().unwrap_or(0);
+                    if arg_num > max_arg {
+                        max_arg = arg_num;
+                    }
+                    arg.clear();
+                }
+            }
+
+            let arg_num = arg.parse::<usize>().unwrap_or(0);
+            if arg_num > max_arg {
+                max_arg = arg_num;
+            }
+
+            arg.clear();
+        }
+
+        max_arg
     }
 
     fn command_string(&self) -> Result<&String> {
@@ -54,6 +90,15 @@ impl ActionDefinition {
         let split_results: Vec<String> = shell_words::split(command_string)?;
         if split_results.len() == 0 {
             return Err(anyhow::anyhow!("command {} is empty", self.name));
+        }
+
+        if args.len() < self.required_args() {
+            return Err(anyhow::anyhow!(
+                "command {} requires {} arguments, but only {} were provided",
+                self.name,
+                self.required_args(),
+                args.len()
+            ));
         }
 
         // Replace %1, etc or $1, $2 in the command string with the arguments
@@ -81,5 +126,33 @@ impl ActionDefinition {
             .context(format!("failed to run command {}", self.name))?;
 
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn action_required_args() {
+        let command_str = Some("echo %1 %3 $22m %8ß".to_string());
+        let action = ActionDefinition {
+            name: "test".to_string(),
+            linux: command_str.clone(),
+            macos: command_str.clone(),
+            windows: command_str.clone(),
+        };
+
+        assert_eq!(action.required_args(), 22);
+
+        let cmd_list = action.to_command(&vec!["a".to_string(); 22]).unwrap();
+
+        let cmd_list: Vec<&str> = cmd_list
+            .get_args()
+            .into_iter()
+            .map(|s| s.to_str().unwrap())
+            .collect();
+
+        assert_eq!(cmd_list, vec!["a", "a", "am", "aß"]);
     }
 }

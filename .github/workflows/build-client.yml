@@ -98,7 +98,7 @@ jobs:
     - uses: actions/checkout@v2
 
     - name: Install additional packages
-      run: apt-get update && apt-get install -y curl libx11-dev xfonts-base xfonts-utils make automake gcc g++ linux-headers-amd64
+      run: apt-get update && apt-get install -y curl libx11-dev xfonts-base xfonts-utils make automake gcc g++ linux-headers-amd64 pkg-config
 
     - name: Install Rust
       run: |

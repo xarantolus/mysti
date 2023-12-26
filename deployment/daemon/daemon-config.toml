@@ -6,7 +6,7 @@
 # The client connects to the server specified
 # If you use Caddy or some other reverse proxy,
 # make sure to specify the correct port (the output port of Caddy)
-server_host = "https://misc.010.one:728"
+server_host = "https://my.host.com:1234"
 
 # The token is used to authenticate the client with the server.
 # When you set up the server, you should have generated a token

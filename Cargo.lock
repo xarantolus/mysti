@@ -28,9 +28,9 @@ dependencies = [
 
 [[package]]
 name = "anyhow"
-version = "1.0.75"
+version = "1.0.76"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a4668cab20f66d8d020e1fbc0ebe47217433c1b6c8f2040faf858554e394ace6"
+checksum = "59d2a3357dde987206219e78ecfbbb6e8dad06cbb65292758d3270e6254f7355"
 
 [[package]]
 name = "arboard"
@@ -145,6 +145,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "baf1de4339761588bc0619e3cbc0120ee582ebb74b53b4efbf79117bd2da40fd"
 
 [[package]]
+name = "cli"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "common",
+ "url",
+]
+
+[[package]]
 name = "client"
 version = "0.1.0"
 dependencies = [
@@ -200,9 +209,12 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "image",
+ "log",
  "serde",
  "serde_json",
  "tokio-tungstenite 0.21.0",
+ "toml",
+ "url",
  "warp",
  "winapi",
  "xdotool",

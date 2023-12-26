@@ -2,25 +2,25 @@ use anyhow::{Context, Result};
 use serde::Deserialize;
 
 #[derive(Deserialize, Debug, Clone)]
-pub struct Config {
+pub struct ClientConfig {
     pub server_host: String,
     pub token: String,
     // TODO: Configure actions instead of hardcoding them
 }
 
-pub fn parse_file(name: &str) -> Result<Config> {
+pub fn parse_file(name: &str) -> Result<ClientConfig> {
     let contents = std::fs::read_to_string(name).context("Failed to read config file")?;
 
     parse(&contents)
 }
 
-pub fn parse(content: &str) -> Result<Config> {
-    toml::from_str::<Config>(content).context("Error during parse")
+pub fn parse(content: &str) -> Result<ClientConfig> {
+    toml::from_str::<ClientConfig>(content).context("Error during parse")
 }
 
 /// Look for the configuration file in common directories
 /// and stop when finding the first
-pub fn find_parse_config() -> Result<Config> {
+pub fn find_parse_config() -> Result<ClientConfig> {
     // Search in different order depending on the OS
     // Linux/Mac: XDG_CONFIG_HOME, $HOME/.config, working directory
     // Windows: %USERPROFILE%\.config, working directory

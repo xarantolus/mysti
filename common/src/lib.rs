@@ -2,6 +2,9 @@ use core::fmt::{self, Debug, Formatter};
 use serde::{Deserialize, Serialize};
 
 pub mod action;
+pub mod client_config;
+pub mod name;
+pub mod url;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ActionMessage {

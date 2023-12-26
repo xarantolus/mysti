@@ -1,3 +1,4 @@
+use common::types::ConnectedClientInfo;
 use common::{ActionMessage, ClipboardContent};
 use log::info;
 
@@ -6,21 +7,15 @@ use std::sync::atomic::AtomicUsize;
 use std::sync::{Arc, RwLock};
 use tokio::sync::mpsc::UnboundedSender;
 
-pub struct ClientInfo {
+pub struct ConnectionInfo {
     name: String,
     pub connected_at: std::time::SystemTime,
     channel: UnboundedSender<ActionMessage>,
 }
 
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
-pub struct ClientPublicInfo {
-    pub name: String,
-    pub id: usize,
-    pub connected_at: std::time::SystemTime,
-}
 
 pub struct Manager {
-    connections: Arc<RwLock<HashMap<usize, ClientInfo>>>,
+    connections: Arc<RwLock<HashMap<usize, ConnectionInfo>>>,
     counter: AtomicUsize,
 
     pub last_clipboard_content: RwLock<ClipboardContent>,
@@ -43,7 +38,7 @@ impl Manager {
             .fetch_add(1, std::sync::atomic::Ordering::SeqCst);
 
         let mut connections = self.connections.write().unwrap();
-        connections.insert(id, ClientInfo{
+        connections.insert(id, ConnectionInfo{
             connected_at: std::time::SystemTime::now(),
             name: name.clone(),
             channel: tx.clone(),
@@ -56,12 +51,12 @@ impl Manager {
         self.connections.read().unwrap().len()
     }
 
-    pub fn list_clients(&self) -> Vec<ClientPublicInfo> {
+    pub fn list_clients(&self) -> Vec<ConnectedClientInfo> {
         let connections = self.connections.read().unwrap();
 
         connections
             .iter()
-            .map(|(&id, info)| ClientPublicInfo {
+            .map(|(&id, info)| ConnectedClientInfo {
                 name: info.name.clone(),
                 id,
                 connected_at: info.connected_at,

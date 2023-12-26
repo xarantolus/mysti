@@ -73,7 +73,7 @@ fn get_clipboard_content(output_format: &ImageOutputFormat) -> Result<ClipboardC
 
 impl<T: From<ClipboardContent>> ClipboardHandler for &mut Watcher<T> {
     fn on_clipboard_change(&mut self) -> CallbackResult {
-        eprintln!("Clipboard content changed");
+        log::info!("Clipboard content changed");
         match get_clipboard_content(&self.output_format) {
             Ok(content) => {
                 // Since we cannot make this function async, use a trick to send the content
@@ -81,14 +81,14 @@ impl<T: From<ClipboardContent>> ClipboardHandler for &mut Watcher<T> {
                 let _ = self.channel.try_send(content.into());
             }
             Err(err) => {
-                eprintln!("Error: {}", err);
+                log::warn!("Error: {}", err);
             }
         }
         CallbackResult::Next
     }
 
     fn on_clipboard_error(&mut self, error: io::Error) -> CallbackResult {
-        eprintln!("Error: {}", error);
+        log::warn!("Error: {}", error);
         CallbackResult::Next
     }
 }

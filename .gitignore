@@ -3,3 +3,4 @@ deploy
 .env
 !deployment/**/.env
 *.txt
+**.log

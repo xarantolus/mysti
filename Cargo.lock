@@ -152,10 +152,14 @@ dependencies = [
  "arboard",
  "clipboard-master",
  "common",
+ "fern",
  "futures-util",
  "image",
+ "log",
+ "serde",
  "tokio",
  "tokio-tungstenite 0.21.0",
+ "toml",
  "url",
 ]
 
@@ -410,6 +414,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "64d6dafc854908ff5da46ff3f8f473c6984119a2876a383a860246dd7841a868"
 dependencies = [
  "simd-adler32",
+]
+
+[[package]]
+name = "fern"
+version = "0.6.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d9f0c14694cbd524c8720dd69b0e3179344f04ebb5f90f2e4a440c6ea3b2f1ee"
+dependencies = [
+ "log",
 ]
 
 [[package]]

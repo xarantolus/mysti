@@ -5,6 +5,7 @@ use common::action::Action;
 use common::{ActionMessage, ClipboardContent};
 use futures_util::{SinkExt, StreamExt};
 use log::{debug, error, info};
+use std::collections::HashMap;
 use std::net::SocketAddr;
 use warp::reject::Rejection;
 use warp::reply::Reply;
@@ -25,6 +26,17 @@ fn with_config(
     config: Arc<Config>,
 ) -> impl Filter<Extract = (Arc<Config>,), Error = Infallible> + Clone {
     warp::any().map(move || config.clone())
+}
+
+fn with_device_name() -> impl Filter<Extract = (String,), Error = Rejection> + Clone {
+    warp::any()
+        .and(warp::ext::optional::<HashMap<String, String>>())
+        .and_then(|query: Option<HashMap<String, String>>| async move {
+            let device_name = query
+                .and_then(|q| q.get("device_name").cloned());
+
+            Ok::<_, Rejection>(device_name.map(|s| s.to_string()).unwrap_or("Unknown".to_string()))
+        })
 }
 
 async fn handle_client_message(
@@ -54,11 +66,11 @@ async fn handle_client_message(
     Ok(())
 }
 
-async fn handle_connection(ws: WebSocket, manager: Arc<Manager>) {
+async fn handle_connection(ws: WebSocket, manager: Arc<Manager>, device_name: String) {
     let (mut user_ws_tx, mut user_ws_rx) = ws.split();
     let (websocket_writer, mut websocket_outbound_stream) = mpsc::unbounded_channel();
 
-    let id = manager.add_connection(&websocket_writer);
+    let id = manager.add_connection(&websocket_writer, &device_name);
 
     // Every time we get a message from the outbound stream, send it to the user.
     tokio::spawn(async move {
@@ -95,6 +107,8 @@ async fn handle_connection(ws: WebSocket, manager: Arc<Manager>) {
         }
     });
 
+    log::info!("Connected WebSocket connection {} ({}), now have {} connections", id, device_name, manager.client_count());
+
     // Every time we get a message from the user, handle it with the handler.
     while let Some(result) = user_ws_rx.next().await {
         match result {
@@ -119,8 +133,8 @@ async fn handle_connection(ws: WebSocket, manager: Arc<Manager>) {
     manager.remove_connection(id);
 }
 
-fn handle_ws_route(_: bool, ws: warp::ws::Ws, manager: Arc<Manager>) -> impl Reply {
-    ws.on_upgrade(move |socket| handle_connection(socket, manager))
+fn handle_ws_route(_: bool, device_name: String, ws: warp::ws::Ws, manager: Arc<Manager>) -> impl Reply {
+    ws.on_upgrade(move |socket| handle_connection(socket, manager, device_name))
 }
 
 fn handle_wake_on_lan_route(_: bool, config: Arc<Config>) -> impl Reply {
@@ -199,6 +213,7 @@ fn with_auth(token: String) -> impl Filter<Extract = (bool,), Error = Rejection>
 pub async fn start_web_server(config: &Config, connection_manager: Arc<Manager>) {
     let ws_route = warp::path("ws")
         .and(with_auth(config.token.to_string()))
+        .and(with_device_name())
         .and(warp::ws())
         .and(with_manager(connection_manager.clone()))
         .map(handle_ws_route);

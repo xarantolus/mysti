@@ -6,9 +6,13 @@ use std::sync::atomic::AtomicUsize;
 use std::sync::{Arc, RwLock};
 use tokio::sync::mpsc::UnboundedSender;
 
-// Define the struct for managing WebSocket connections.
+pub struct ClientInfo {
+    name: String,
+    channel: UnboundedSender<ActionMessage>,
+}
+
 pub struct Manager {
-    connections: Arc<RwLock<HashMap<usize, UnboundedSender<ActionMessage>>>>,
+    connections: Arc<RwLock<HashMap<usize, ClientInfo>>>,
     counter: AtomicUsize,
 
     pub last_clipboard_content: RwLock<ClipboardContent>,
@@ -25,15 +29,22 @@ impl Manager {
     }
 
     // Add a new WebSocket connection to the manager.
-    pub fn add_connection(&self, tx: &UnboundedSender<ActionMessage>) -> usize {
+    pub fn add_connection(&self, tx: &UnboundedSender<ActionMessage>, name: &String) -> usize {
         let id = self
             .counter
             .fetch_add(1, std::sync::atomic::Ordering::SeqCst);
 
         let mut connections = self.connections.write().unwrap();
-        connections.insert(id, tx.clone());
+        connections.insert(id, ClientInfo{
+            name: name.clone(),
+            channel: tx.clone(),
+        });
 
         id
+    }
+
+    pub fn client_count(&self) -> usize {
+        self.connections.read().unwrap().len()
     }
 
     // Remove a WebSocket connection from the manager.
@@ -56,13 +67,13 @@ impl Manager {
             message
         );
 
-        for (_, tx) in connections.iter().filter(|(id, _)| {
+        for (_, tx) in connections.iter().filter(|(&id, _)| {
             if let Some(sender_id) = sender {
-                return **id != sender_id;
+                return id != sender_id;
             }
             true
         }) {
-            let _ = tx.send(message.clone());
+            let _ = tx.channel.send(message.clone());
         }
     }
 }

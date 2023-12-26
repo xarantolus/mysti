@@ -1,5 +1,6 @@
 mod clipboard;
 mod config;
+mod name;
 
 use crate::clipboard::Watcher;
 use anyhow::{Context, Result};
@@ -8,6 +9,7 @@ use config::Config;
 use futures_util::SinkExt;
 use futures_util::StreamExt;
 use image::ImageOutputFormat;
+use name::client_name;
 use std::convert::TryInto;
 use std::{thread, time::Duration};
 use tokio::select;
@@ -104,7 +106,8 @@ impl MystiClient {
 
         server_url
             .query_pairs_mut()
-            .append_pair("token", &self.config.token);
+            .append_pair("token", &self.config.token)
+            .append_pair("device_name", &client_name());
 
         let (remote_event, mut remote_receiver) = channel::<ActionMessage>(10);
         let (outgoing_events, mut outgoing_receiver) = channel::<ActionMessage>(10);

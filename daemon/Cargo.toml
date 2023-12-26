@@ -21,7 +21,10 @@ serde = { version = "1.0.193", features = ["derive"] }
 toml = "0.8.8"
 log = "0.4.20"
 fern = "0.6.2"
+sys-info = "0.9.1"
 
+#[cfg(target_os = "windows")]
+winapi = { version = "0.3", features = ["winuser"] }
 
 [[bin]]
 name = "mysti-daemon"

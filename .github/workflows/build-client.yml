@@ -88,8 +88,98 @@ jobs:
         name: mysti-client-fedora
         path: ./mysti-client-fedora
 
+  build-debian:
+    runs-on: ubuntu-latest
+
+    container:
+      image: debian:latest
+
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Install additional packages
+      run: apt-get update && apt-get install -y libx11-dev xfonts-misc xfonts-utils make automake gcc g++ linux-headers-$(uname -r)
+
+    - name: Install Rust
+      run: |
+        curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+        source $HOME/.cargo/env
+
+    - name: Build
+      run: source $HOME/.cargo/env && cargo build --release
+      working-directory: client
+
+    - name: Rename binary
+      run: find . -type f -name mysti-client -exec mv {} mysti-client-debian \;
+
+    - name: Upload artifact
+      uses: actions/upload-artifact@v2
+      with:
+        name: mysti-client-debian
+        path: ./mysti-client-debian
+
+  build-archlinux:
+    runs-on: ubuntu-latest
+
+    container:
+      image: archlinux:latest
+
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Install additional packages
+      run: pacman -Syu --noconfirm libx11 xorg-fonts-misc xorg-fonts-alias xorg-mkfontscale make automake gcc linux-headers
+
+    - name: Install Rust
+      run: |
+        curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+        source $HOME/.cargo/env
+
+    - name: Build
+      run: source $HOME/.cargo/env && cargo build --release
+      working-directory: client
+
+    - name: Rename binary
+      run: find . -type f -name mysti-client -exec mv {} mysti-client-archlinux \;
+
+    - name: Upload artifact
+      uses: actions/upload-artifact@v2
+      with:
+        name: mysti-client-archlinux
+        path: ./mysti-client-archlinux
+
+  build-centos:
+    runs-on: ubuntu-latest
+
+    container:
+      image: centos:latest
+
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Install additional packages
+      run: yum install -y libX11-devel xorg-x11-fonts-misc xorg-x11-font-utils make automake gcc gcc-c++ kernel-devel
+
+    - name: Install Rust
+      run: |
+        curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+        source $HOME/.cargo/env
+
+    - name: Build
+      run: source $HOME/.cargo/env && cargo build --release
+      working-directory: client
+
+    - name: Rename binary
+      run: find . -type f -name mysti-client -exec mv {} mysti-client-centos \;
+
+    - name: Upload artifact
+      uses: actions/upload-artifact@v2
+      with:
+        name: mysti-client-centos
+        path: ./mysti-client-centos
+
   release:
-    needs: [build-windows, build-ubuntu, build-fedora]
+    needs: [build-windows, build-ubuntu, build-fedora, build-debian, build-archlinux, build-centos]
     runs-on: ubuntu-latest
 
     steps:
@@ -103,6 +193,9 @@ jobs:
           mysti-client-windows/mysti-client-windows.exe
           mysti-client-ubuntu/mysti-client-ubuntu
           mysti-client-fedora/mysti-client-fedora
+          mysti-client-debian/mysti-client-debian
+          mysti-client-archlinux/mysti-client-archlinux
+          mysti-client-centos/mysti-client-centos
         tag_name: latest
         body: |
           This is the latest release of the Mysti client.

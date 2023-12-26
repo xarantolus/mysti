@@ -11,9 +11,8 @@ impl Display for ConnectedClientInfo {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
-            "{} (id: {}, connected {}s ago)",
+            "{}, connected {}s ago",
             self.name,
-            self.id,
             SystemTime::now()
                 .duration_since(self.connected_at)
                 .unwrap()

@@ -1,4 +1,4 @@
-use std::{net::IpAddr, str::FromStr, path::Display};
+use std::{net::IpAddr, str::FromStr};
 
 use anyhow::{Context, Result};
 use macaddr::MacAddr6;
@@ -10,7 +10,6 @@ pub struct Config {
     pub wake_on_lan: WakeOnLanConfig,
     pub token: String,
 }
-
 
 #[derive(Deserialize, Debug, Clone)]
 pub struct WakeOnLanConfig {
@@ -48,19 +47,17 @@ impl<'de> serde::Deserialize<'de> for ParseableMacAddr {
         use serde::de::Error;
 
         let mac = String::deserialize(deserializer).and_then(|s| {
-                MacAddr6::from_str(&s).map_err(|e| match e {
+            MacAddr6::from_str(&s).map_err(|e| match e {
                 ParseError::InvalidLength(_) => Error::invalid_length(s.len(), &"17"),
-                ParseError::InvalidCharacter(c, _) => Error::invalid_value(
-                    serde::de::Unexpected::Char(c),
-                    &"a valid hex character"
-                ),
+                ParseError::InvalidCharacter(c, _) => {
+                    Error::invalid_value(serde::de::Unexpected::Char(c), &"a valid hex character")
+                }
             })
         })?;
 
         Ok(ParseableMacAddr(mac))
     }
 }
-
 
 #[cfg(test)]
 mod tests {
@@ -71,8 +68,14 @@ mod tests {
         assert_eq!(config.web_port, 9138);
         assert_eq!(config.token, "some_token");
 
-        assert_eq!(config.wake_on_lan.target_addr.0, MacAddr6::new(0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA));
-        assert_eq!(config.wake_on_lan.router_addr.unwrap(), IpAddr::from_str("255.255.255.255").unwrap());
+        assert_eq!(
+            config.wake_on_lan.target_addr.0,
+            MacAddr6::new(0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA)
+        );
+        assert_eq!(
+            config.wake_on_lan.router_addr.unwrap(),
+            IpAddr::from_str("255.255.255.255").unwrap()
+        );
     }
 
     #[test]
@@ -98,6 +101,6 @@ mod tests {
     target_addr = "AA:AA:AA:aa:AA:AA"
     router_addr = "255.255.255.255""#;
 
-    assert_config(config_str);
+        assert_config(config_str);
     }
 }

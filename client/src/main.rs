@@ -111,19 +111,19 @@ impl MystiClient {
                 let socket = {
                     let mut fail_count = 0;
                     loop {
+                        match connect_async(moved_server_url.clone()).await {
+                            Ok((socket, _)) => break socket,
+                            Err(e) => {
+                                if fail_count % 12 == 0 {
+                                    eprintln!("Failed to connect to server: {}", e);
+                                }
+                                fail_count += 1;
 
-                    match connect_async(moved_server_url.clone()).await {
-                        Ok((socket, _)) => break socket,
-                        Err(e) => {
-                            if fail_count % 12 == 0 {
-                                eprintln!("Failed to connect to server: {}", e);
+                                tokio::time::sleep(Duration::from_secs(5)).await;
                             }
-                            fail_count += 1;
-
-                            tokio::time::sleep(Duration::from_secs(5)).await;
-                        }
-                    };
-                }};
+                        };
+                    }
+                };
 
                 println!("Connected to server");
 

@@ -1,6 +1,0 @@
-web_port = 43853
-token = "c8e974b3313f0d67f66eaf449b3df7p785c7bb6eaeade7e5b1cfba3a9ddc48ed6"
-
-[wake_on_lan]
-target_addr = [0x50, 0xEB, 0xF6, 0x7F, 0x3D, 0x84]
-router_addr = "255.255.255.255"

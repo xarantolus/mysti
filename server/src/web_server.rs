@@ -30,7 +30,7 @@ fn with_config(
 async fn handle_client_message(
     message: ActionMessage,
     manager: Arc<Manager>,
-    sender_id: Option<u64>,
+    sender_id: Option<usize>,
 ) -> Result<()> {
     // Sometimes we have custom logic for certain messages.
     match &message {
@@ -124,7 +124,7 @@ fn handle_ws_route(_: bool, ws: warp::ws::Ws, manager: Arc<Manager>) -> impl Rep
 }
 
 fn handle_wake_on_lan_route(_: bool, config: Arc<Config>) -> impl Reply {
-    let magic_packet = MagicPacket::new(&config.wake_on_lan.target_addr.into_array());
+    let magic_packet = MagicPacket::new(&config.wake_on_lan.target_addr.0.into_array());
 
     let res = magic_packet.send();
 

@@ -1,4 +1,5 @@
 **target/
 deploy
 .env
+!deployment/**/.env
 *.txt

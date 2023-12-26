@@ -1,0 +1,12 @@
+# the HTTP port the server should listen on
+web_port = 43853
+
+# a custom token to use for authentication - you can e.g. generate one with
+#    xxd -l 30 -p /dev/urandom
+token = "your custom token to use as password"
+
+[wake_on_lan]
+# The target address is the MAC address of the PC you want to wake up.
+# The mysti server must be on the same network as the PC.
+target_addr = "AA:AA:AA:AA:AA:AA"
+router_addr = "255.255.255.255"

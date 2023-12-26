@@ -1,0 +1,13 @@
+version: '3.7'
+services:
+  server:
+    image: ${CONTAINER_REGISTRY_PREFIX:-ghcr.io/xarantolus}/mysti-arm64v8:latest
+    build:
+      context: ../..
+      dockerfile: ${PWD}/Dockerfile
+    network_mode: host
+    restart: unless-stopped
+    volumes:
+      - ./config.toml:/config.toml
+    cap_add:
+      - NET_ADMIN

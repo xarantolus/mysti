@@ -1,10 +1,10 @@
 version: '3.7'
 services:
   server:
-    image: ${CONTAINER_REGISTRY_PREFIX:-ghcr.io/xarantolus}/mysti:latest
+    image: ${CONTAINER_REGISTRY_PREFIX:-ghcr.io/xarantolus}/mysti-arm64v8:latest
     build:
-      context: .
-      dockerfile: Dockerfile
+      context: ../..
+      dockerfile: ${PWD}/Dockerfile
     network_mode: host
     restart: unless-stopped
     volumes:
@@ -13,10 +13,10 @@ services:
       - NET_ADMIN
 
   caddy:
-    image: ${CONTAINER_REGISTRY_PREFIX:-ghcr.io/xarantolus}/mysti-caddy:latest
+    image: ${CONTAINER_REGISTRY_PREFIX:-ghcr.io/xarantolus}/mysti-caddy-namecheap-arm64v8:latest
     build:
       context: .
-      dockerfile: Dockerfile.caddy
+      dockerfile: ${PWD}/Dockerfile.caddy
     network_mode: host
     ports:
       - 728:728

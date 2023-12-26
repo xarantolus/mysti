@@ -1,5 +1,5 @@
 # Build Stage
-FROM rust:1.74-slim-buster as builder
+FROM rust:1-slim-buster as builder
 
 RUN rustup target add aarch64-unknown-linux-gnu
 

@@ -1,0 +1,15 @@
+{
+    http_port <port>
+}
+
+https://<some domain>:<port> {
+  reverse_proxy localhost:<port>
+
+  tls <put your lets encrypt email here> {
+    dns namecheap {
+          api_key {env.NAMECHEAP_API_KEY}
+          user {env.NAMECHEAP_API_USER}
+      }
+  }
+}
+

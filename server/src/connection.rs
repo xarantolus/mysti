@@ -2,14 +2,14 @@ use common::{ActionMessage, ClipboardContent};
 use log::info;
 
 use std::collections::HashMap;
-use std::sync::atomic::AtomicU64;
+use std::sync::atomic::AtomicUsize;
 use std::sync::{Arc, RwLock};
 use tokio::sync::mpsc::UnboundedSender;
 
 // Define the struct for managing WebSocket connections.
 pub struct Manager {
-    connections: Arc<RwLock<HashMap<u64, UnboundedSender<ActionMessage>>>>,
-    counter: AtomicU64,
+    connections: Arc<RwLock<HashMap<usize, UnboundedSender<ActionMessage>>>>,
+    counter: AtomicUsize,
 
     pub last_clipboard_content: RwLock<ClipboardContent>,
 }
@@ -19,13 +19,13 @@ impl Manager {
     pub fn new() -> Self {
         Manager {
             connections: Arc::new(RwLock::new(HashMap::new())),
-            counter: AtomicU64::new(0),
+            counter: AtomicUsize::new(0),
             last_clipboard_content: RwLock::new(ClipboardContent::None),
         }
     }
 
     // Add a new WebSocket connection to the manager.
-    pub fn add_connection(&self, tx: &UnboundedSender<ActionMessage>) -> u64 {
+    pub fn add_connection(&self, tx: &UnboundedSender<ActionMessage>) -> usize {
         let id = self
             .counter
             .fetch_add(1, std::sync::atomic::Ordering::SeqCst);
@@ -37,13 +37,13 @@ impl Manager {
     }
 
     // Remove a WebSocket connection from the manager.
-    pub fn remove_connection(&self, id: u64) {
+    pub fn remove_connection(&self, id: usize) {
         let mut connections = self.connections.write().unwrap();
         connections.remove(&id);
     }
 
     // Broadcast a message to all WebSocket connections, except for the sender if given.
-    pub fn broadcast(&self, message: &ActionMessage, sender: Option<u64>) {
+    pub fn broadcast(&self, message: &ActionMessage, sender: Option<usize>) {
         let connections = self.connections.read().unwrap();
 
         info!(

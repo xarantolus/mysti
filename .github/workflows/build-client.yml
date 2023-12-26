@@ -1,9 +1,9 @@
-name: Build and Release
+name: Client Build
 
 on:
   push:
     branches: [ "main" ]
-
+  
 jobs:
   build-windows:
     runs-on: windows-latest
@@ -156,6 +156,8 @@ jobs:
   release:
     needs: [build-windows, build-ubuntu, build-fedora, build-debian, build-archlinux]
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
 
     steps:
     - name: Download artifacts

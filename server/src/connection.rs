@@ -80,6 +80,14 @@ impl Manager {
         connections.remove(&id);
     }
 
+    pub fn send_to_specific(&self, id: usize, message: &ActionMessage) {
+        let connections = self.connections.read().unwrap();
+
+        if let Some(tx) = connections.get(&id) {
+            let _ = tx.channel.send(message.clone());
+        }
+    }
+
     // Broadcast a message to all WebSocket connections, except for the sender if given.
     pub fn broadcast(&self, message: &ActionMessage, sender: Option<usize>) {
         let connections = self.connections.read().unwrap();

@@ -24,6 +24,7 @@ fn main() {
         .unwrap_or(0);
 
     let selection = if clients.len() <= 1 {
+        println!("Only {} is connected", clients[0].name);
         0
     } else {
         FuzzySelect::new()

@@ -194,6 +194,16 @@ fn handle_action_route(_: bool, wrapper: Action, manager: Arc<Manager>) -> impl 
     warp::reply::html("OK")
 }
 
+fn handle_specific_action_route(
+    id: usize,
+    _: bool,
+    wrapper: Action,
+    manager: Arc<Manager>,
+) -> impl Reply {
+    manager.send_to_specific(id, &ActionMessage::Action(wrapper));
+    warp::reply::html("OK")
+}
+
 fn handle_read_clipboard_route(_: bool, manager: Arc<Manager>) -> impl Reply {
     let last_clipboard_content = manager.last_clipboard_content.read().unwrap();
 
@@ -266,6 +276,13 @@ pub async fn start_web_server(config: &Config, connection_manager: Arc<Manager>)
         .and(with_manager(connection_manager.clone()))
         .map(handle_action_route);
 
+    let action_route_specific = warp::path!("actions" / "create" / usize)
+        .and(with_auth(config.token.to_string()))
+        .and(warp::post())
+        .and(warp::body::json())
+        .and(with_manager(connection_manager.clone()))
+        .map(handle_specific_action_route);
+
     let clipboard_read_route = warp::path!("devices" / "clipboard")
         .and(with_auth(config.token.to_string()))
         .and(warp::get())
@@ -288,6 +305,7 @@ pub async fn start_web_server(config: &Config, connection_manager: Arc<Manager>)
 
     let routes = ws_route
         .or(action_route)
+        .or(action_route_specific)
         .or(wake_on_lan_route)
         .or(client_list_route)
         .or(clipboard_read_route)

@@ -98,7 +98,7 @@ impl MystiClient {
                 "ws" => "ws",
                 "wss" => "wss",
                 "" => "wss",
-                _ => return Err(anyhow::anyhow!("Invalid scheme")),
+                _ => return Err(anyhow::anyhow!("Invalid URL scheme {:?}", server_url.scheme())),
             })
             .map_err(|_| anyhow::anyhow!("Failed to set scheme"))?;
 

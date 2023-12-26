@@ -1,5 +1,5 @@
 // Basic websocket handler in javascript for debugging
-var debug_socket = new WebSocket("ws://127.0.0.1:8080/ws");
+var debug_socket = new WebSocket("ws://127.0.0.1:8089/ws");
 
 debug_socket.onclose = function (event) {
 	console.log("Socket closed");

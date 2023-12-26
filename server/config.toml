@@ -1,0 +1,6 @@
+web_port = 8089
+token = "debug-token"
+
+[wake_on_lan]
+target_addr = "AA:AA:AA:AA:AA:AA"
+router_addr = "255.255.255.255"

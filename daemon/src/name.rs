@@ -1,23 +1,24 @@
-use std::env;
+use std::{env, process::Command};
 
 pub fn client_name() -> String {
     // Get current user name
-    let user_name = if let Some(user) = env::var_os("USER") {
-        format!("{}", user.to_string_lossy())
+    let user_name = if let Ok(user) = env::var("USER") {
+        user
+    } else if let Ok(user) = env::var("USERNAME") {
+        user
     } else {
         "UnknownUser".to_string()
     };
 
     // Get computer name (hostname)
-    let hostname = if let Ok(hostname) = sys_info::hostname() {
-        hostname
-    } else {
-        "UnknownHost".to_string()
-    };
+    let hostname = Command::new("hostname")
+        .output()
+        .map(|output| String::from_utf8_lossy(&output.stdout).trim().to_string())
+        .unwrap_or_else(|_| "UnknownHost".to_string());
 
     // Get distribution name or Windows version
     let dist_name = {
-		let mut distro = "UnknownDistribution".to_string();
+        let distro : String;
 
         #[cfg(target_os = "linux")]
         {
@@ -29,8 +30,11 @@ pub fn client_name() -> String {
                 for line in reader.lines() {
                     if let Ok(line) = line {
                         if line.starts_with("PRETTY_NAME=") {
-							distro = line.trim_start_matches("PRETTY_NAME=").trim_matches('"').to_string();
-							break;
+                            distro = line
+                                .trim_start_matches("PRETTY_NAME=")
+                                .trim_matches('"')
+                                .to_string();
+                            break;
                         }
                     }
                 }
@@ -39,19 +43,17 @@ pub fn client_name() -> String {
 
         #[cfg(target_os = "windows")]
         {
-            use winapi::um::winnt::OSVERSIONINFOEXW;
-
-            let mut os_version_info: OSVERSIONINFOEXW = Default::default();
-            os_version_info.dwOSVersionInfoSize = std::mem::size_of::<OSVERSIONINFOEXW>() as u32;
-
-            distro = if unsafe { crate::winapi::GetVersionExW(&mut os_version_info as *mut OSVERSIONINFOEXW) } != 0 {
-                format!("Windows {} (Build {})", os_version_info.dwMajorVersion, os_version_info.dwBuildNumber)
-            } else {
-				"UnknownWindowsVersion".to_string()
-			}
+            distro = Command::new("powershell")
+                .arg("-Command")
+                .arg(
+                    "Get-CimInstance Win32_OperatingSystem | Select-Object -ExpandProperty Caption",
+                )
+                .output()
+                .map(|output| String::from_utf8_lossy(&output.stdout).trim().to_string())
+                .unwrap_or_else(|_| "UnknownWindows".to_string())
         }
 
-		distro
+        distro
     };
 
     format!("{} on {} ({})", user_name, hostname, dist_name)

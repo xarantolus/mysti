@@ -99,7 +99,7 @@ jobs:
 
     - name: Install additional packages
       run: |
-        apt-get update && apt-get install -y curl libx11-dev xfonts-base xfonts-utils make automake gcc g++ linux-headers-amd64 pkg-config openssl mlocate
+        apt-get update && apt-get install -y curl libx11-dev xfonts-base xfonts-utils make automake gcc g++ linux-headers-amd64 pkg-config openssl libssl-dev mlocate
         updatedb # make sure pkg-config can find openssl
 
     - name: Install Rust

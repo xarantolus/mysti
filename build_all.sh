@@ -1,5 +1,5 @@
 #!/bin/bash
-set +eoux pipefail
+set -eoux pipefail
 
 ALL_FLAGS="$*"
 
@@ -12,7 +12,12 @@ for file in */docker-compose.yml; do
     DIR=$(dirname "$file")
     pushd "$DIR"
     echo "$(date "+%Y-%m-%d %H:%M:%S") Building $DIR"
-    docker compose build $ALL_FLAGS
+
+    # Run in background - that way we can build multiple images at once
+    docker compose build $ALL_FLAGS &
     popd
   fi
 done
+
+# Wait for all background processes to finish
+wait

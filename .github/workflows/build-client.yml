@@ -102,12 +102,14 @@ jobs:
 
     - name: Install Rust
       run: |
-        curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | bash -s -- -y
+        curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
         source $HOME/.cargo/env
+      shell: bash
 
     - name: Build
       run: source $HOME/.cargo/env && cargo build --release
       working-directory: client
+      shell: bash
 
     - name: Rename binary
       run: find . -type f -name mysti-client -exec mv {} mysti-client-debian \;

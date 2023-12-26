@@ -7,15 +7,15 @@
 		{
 			"type": "lldb",
 			"request": "launch",
-			"name": "Debug executable 'mysti-client'",
+			"name": "Debug executable 'mysti-daemon'",
 			"cargo": {
 				"args": [
 					"build",
-					"--bin=mysti-client",
+					"--bin=mysti-daemon",
 					"--package=client"
 				],
 				"filter": {
-					"name": "mysti-client",
+					"name": "mysti-daemon",
 					"kind": "bin"
 				}
 			},
@@ -25,16 +25,16 @@
 		{
 			"type": "lldb",
 			"request": "launch",
-			"name": "Debug unit tests in executable 'mysti-client'",
+			"name": "Debug unit tests in executable 'mysti-daemon'",
 			"cargo": {
 				"args": [
 					"test",
 					"--no-run",
-					"--bin=mysti-client",
+					"--bin=mysti-daemon",
 					"--package=client"
 				],
 				"filter": {
-					"name": "mysti-client",
+					"name": "mysti-daemon",
 					"kind": "bin"
 				}
 			},

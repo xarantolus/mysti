@@ -1,4 +1,4 @@
-# This is the mysti client configuration file.
+# This is the mysti daemon configuration file.
 # Depending on the operation system, it is expected in the following locations:
 #   Linux/Mac: $XDG_CONFIG_HOME/mysti.toml, $HOME/.config/mysti.toml or working directory
 #   Windows: %USERPROFILE%\.config\mysti.toml or working directory

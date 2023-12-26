@@ -1,5 +1,5 @@
 install:
-	cargo install --path client
+	cargo install --path daemon
 
 check:
 	# rustup target add x86_64-unknown-linux-gnu x86_64-pc-windows-gnu

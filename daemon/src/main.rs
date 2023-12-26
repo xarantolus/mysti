@@ -275,11 +275,11 @@ impl MystiClient {
 
 #[tokio::main]
 async fn main() {
-    // log to mysti-client.log (via fern) and stdout
+    // log to mysti-daemon.log (via fern) and stdout
     fern::Dispatch::new()
         .level(log::LevelFilter::Info)
         .chain(std::io::stdout())
-        .chain(fern::log_file("mysti-client.log").expect("Failed to open log file"))
+        .chain(fern::log_file("mysti-daemon.log").expect("Failed to open log file"))
         .apply()
         .expect("Failed to initialize logger");
 

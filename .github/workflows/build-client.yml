@@ -3,7 +3,7 @@ name: Client Build
 on:
   push:
     branches: [ "main" ]
-  
+
 jobs:
   build-windows:
     runs-on: windows-latest
@@ -22,13 +22,13 @@ jobs:
       working-directory: client
 
     - name: Rename binary
-      run: mv target/release/mysti-client.exe mysti-client-windows.exe
+      run: mv target/release/mysti-daemon.exe mysti-daemon-windows.exe
 
     - name: Upload artifact
       uses: actions/upload-artifact@v2
       with:
-        name: mysti-client-windows
-        path: ./mysti-client-windows.exe
+        name: mysti-daemon-windows
+        path: ./mysti-daemon-windows.exe
 
   build-ubuntu:
     runs-on: ubuntu-latest
@@ -50,13 +50,13 @@ jobs:
       working-directory: client
 
     - name: Rename binary
-      run: mv target/release/mysti-client mysti-client-ubuntu
+      run: mv target/release/mysti-daemon mysti-daemon-ubuntu
 
     - name: Upload artifact
       uses: actions/upload-artifact@v2
       with:
-        name: mysti-client-ubuntu
-        path: ./mysti-client-ubuntu
+        name: mysti-daemon-ubuntu
+        path: ./mysti-daemon-ubuntu
 
   build-fedora:
     runs-on: ubuntu-latest
@@ -80,13 +80,13 @@ jobs:
       working-directory: client
 
     - name: Rename binary
-      run: find . -type f -name mysti-client -exec mv {} mysti-client-fedora \;
+      run: find . -type f -name mysti-daemon -exec mv {} mysti-daemon-fedora \;
 
     - name: Upload artifact
       uses: actions/upload-artifact@v2
       with:
-        name: mysti-client-fedora
-        path: ./mysti-client-fedora
+        name: mysti-daemon-fedora
+        path: ./mysti-daemon-fedora
 
   build-debian:
     runs-on: ubuntu-latest
@@ -115,13 +115,13 @@ jobs:
       shell: bash
 
     - name: Rename binary
-      run: find . -type f -name mysti-client -exec mv {} mysti-client-debian \;
+      run: find . -type f -name mysti-daemon -exec mv {} mysti-daemon-debian \;
 
     - name: Upload artifact
       uses: actions/upload-artifact@v2
       with:
-        name: mysti-client-debian
-        path: ./mysti-client-debian
+        name: mysti-daemon-debian
+        path: ./mysti-daemon-debian
 
   build-archlinux:
     runs-on: ubuntu-latest
@@ -145,13 +145,13 @@ jobs:
       working-directory: client
 
     - name: Rename binary
-      run: find . -type f -name mysti-client -exec mv {} mysti-client-archlinux \;
+      run: find . -type f -name mysti-daemon -exec mv {} mysti-daemon-archlinux \;
 
     - name: Upload artifact
       uses: actions/upload-artifact@v2
       with:
-        name: mysti-client-archlinux
-        path: ./mysti-client-archlinux
+        name: mysti-daemon-archlinux
+        path: ./mysti-daemon-archlinux
 
   release:
     needs: [build-windows, build-ubuntu, build-fedora, build-debian, build-archlinux]
@@ -167,8 +167,8 @@ jobs:
       uses: softprops/action-gh-release@v1
       with:
         files: |
-          mysti-client-*/mysti-client-*
+          mysti-daemon-*/mysti-daemon-*
         tag_name: latest
         body: |
-          This is the latest release of the Mysti client.
+          This is the latest release of the Mysti daemon.
         token: ${{ secrets.GITHUB_TOKEN }}

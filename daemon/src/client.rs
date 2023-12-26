@@ -1,5 +1,6 @@
 use crate::clipboard::{Watcher, self};
 use anyhow::Result;
+use common::action::ActionDefinition;
 use common::url;
 use common::{ActionMessage, ClipboardContent, client_config::ClientConfig};
 use futures_util::SinkExt;
@@ -67,7 +68,16 @@ impl MystiClient {
                 clipboard::set_clipboard(&content)?;
             }
             ActionMessage::Action(action) => {
-                action.run().await?;
+                let action_definition = ActionDefinition::find_by_name(&action.action, &self.config.actions);
+
+                match action_definition {
+                    Some(action_definition) => {
+                        action_definition.run(&action.args)?;
+                    }
+                    None => {
+                        log::warn!("Action {} not found", action.action);
+                    }
+                }
             }
         }
 
@@ -85,7 +95,10 @@ impl MystiClient {
         });
 
         // Parse and set the correct URL
-        let server_url = url::generate_request_url(&self.config, "/ws", url::Scheme::WebSocket)?;
+        let mut server_url = url::generate_request_url(&self.config, "/ws", url::Scheme::WebSocket)?;
+        server_url.query_pairs_mut()
+            .append_pair("supported_actions", &self.config.actions.iter().map(|a| a.name.clone()).collect::<Vec<String>>().join(","));
+
 
         let (remote_event, mut remote_receiver) = channel::<ActionMessage>(10);
         let (outgoing_events, mut outgoing_receiver) = channel::<ActionMessage>(10);

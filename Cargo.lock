@@ -160,6 +160,7 @@ dependencies = [
  "reqwest",
  "serde",
  "serde_json",
+ "shell-words",
  "url",
 ]
 
@@ -222,6 +223,7 @@ dependencies = [
  "log",
  "serde",
  "serde_json",
+ "shell-words",
  "tokio-tungstenite 0.21.0",
  "toml",
  "url",

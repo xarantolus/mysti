@@ -1,11 +1,15 @@
 use anyhow::{Context, Result};
 use serde::Deserialize;
 
+use crate::action::ActionDefinition;
+
 #[derive(Deserialize, Debug, Clone)]
 pub struct ClientConfig {
     pub server_host: String,
     pub token: String,
-    // TODO: Configure actions instead of hardcoding them
+
+    #[serde(default = "Vec::new")]
+    pub actions: Vec<ActionDefinition>,
 }
 
 pub fn parse_file(name: &str) -> Result<ClientConfig> {
@@ -25,7 +29,11 @@ pub fn find_parse_config() -> Result<ClientConfig> {
     // Linux/Mac: XDG_CONFIG_HOME, $HOME/.config, working directory
     // Windows: %USERPROFILE%\.config, working directory
 
-    let mut paths = vec![];
+    let mut paths = vec![
+        "mysti.toml".to_string(),
+        "../mysti.toml".to_string(),
+    ];
+
     #[cfg(target_os = "windows")]
     {
         if let Some(home) = std::env::var_os("USERPROFILE") {
@@ -49,8 +57,6 @@ pub fn find_parse_config() -> Result<ClientConfig> {
             }
         }
     }
-
-    paths.push("mysti.toml".to_string());
 
     for path in &paths {
         log::debug!("Trying to parse config file {}", path);

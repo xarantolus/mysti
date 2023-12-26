@@ -28,8 +28,9 @@ fn with_config(
 }
 
 #[derive(Debug, serde::Deserialize)]
-struct DeviceNameFilter {
+struct DeviceInfoFilter {
     device_name: String,
+    supported_actions: String,
 }
 
 async fn handle_client_message(
@@ -59,11 +60,16 @@ async fn handle_client_message(
     Ok(())
 }
 
-async fn handle_connection(ws: WebSocket, manager: Arc<Manager>, device_name: String) {
+async fn handle_connection(
+    ws: WebSocket,
+    manager: Arc<Manager>,
+    device_name: String,
+    supported_actions: Vec<String>,
+) {
     let (mut user_ws_tx, mut user_ws_rx) = ws.split();
     let (websocket_writer, mut websocket_outbound_stream) = mpsc::unbounded_channel();
 
-    let id = manager.add_connection(&websocket_writer, &device_name);
+    let id = manager.add_connection(&websocket_writer, &device_name, supported_actions);
 
     // Every time we get a message from the outbound stream, send it to the user.
     tokio::spawn(async move {
@@ -100,7 +106,12 @@ async fn handle_connection(ws: WebSocket, manager: Arc<Manager>, device_name: St
         }
     });
 
-    log::info!("Connected WebSocket connection {} ({}), now have {} connections", id, device_name, manager.client_count());
+    log::info!(
+        "Connected WebSocket connection {} ({}), now have {} connections",
+        id,
+        device_name,
+        manager.client_count()
+    );
 
     // Every time we get a message from the user, handle it with the handler.
     while let Some(result) = user_ws_rx.next().await {
@@ -111,7 +122,10 @@ async fn handle_connection(ws: WebSocket, manager: Arc<Manager>, device_name: St
                         continue;
                     }
 
-                    error!("Error converting WebSocket message {:?} to Action Message", message);
+                    error!(
+                        "Error converting WebSocket message {:?} to Action Message",
+                        message
+                    );
                     continue;
                 };
 
@@ -126,12 +140,32 @@ async fn handle_connection(ws: WebSocket, manager: Arc<Manager>, device_name: St
         }
     }
 
-    info!("WebSocket connection closed for {}, now have {} clients", id, manager.client_count());
+    info!(
+        "WebSocket connection closed for {}, now have {} clients",
+        id,
+        manager.client_count()
+    );
     manager.remove_connection(id);
 }
 
-fn handle_ws_route(_: bool, device_name: DeviceNameFilter, ws: warp::ws::Ws, manager: Arc<Manager>) -> impl Reply {
-    ws.on_upgrade(move |socket| handle_connection(socket, manager, device_name.device_name))
+fn handle_ws_route(
+    _: bool,
+    device_info: DeviceInfoFilter,
+    ws: warp::ws::Ws,
+    manager: Arc<Manager>,
+) -> impl Reply {
+    ws.on_upgrade(move |socket| {
+        handle_connection(
+            socket,
+            manager,
+            device_info.device_name,
+            device_info
+                .supported_actions
+                .split(",")
+                .map(|s| s.to_string())
+                .collect::<Vec<String>>(),
+        )
+    })
 }
 
 fn handle_wake_on_lan_route(_: bool, config: Arc<Config>) -> impl Reply {
@@ -214,7 +248,7 @@ fn with_auth(token: String) -> impl Filter<Extract = (bool,), Error = Rejection>
 pub async fn start_web_server(config: &Config, connection_manager: Arc<Manager>) {
     let ws_route = warp::path("ws")
         .and(with_auth(config.token.to_string()))
-        .and(warp::query::<DeviceNameFilter>())
+        .and(warp::query::<DeviceInfoFilter>())
         .and(warp::ws())
         .and(with_manager(connection_manager.clone()))
         .map(handle_ws_route);

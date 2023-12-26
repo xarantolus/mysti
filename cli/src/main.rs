@@ -1,5 +1,7 @@
-use common::name::client_name;
+use common::{name::client_name, action::Action};
 use dialoguer::FuzzySelect;
+
+use crate::rest::post_action;
 
 mod rest;
 
@@ -16,7 +18,6 @@ fn main() {
 
     let current_client_name = client_name();
 
-    // get index of the first client that is not ourselfes
     let default_idx = clients
         .iter()
         .position(|client| client.name != current_client_name)
@@ -26,14 +27,35 @@ fn main() {
         0
     } else {
         FuzzySelect::new()
-            .with_prompt("What do you choose?")
+            .with_prompt("Select a client to run an action")
             .items(&clients)
             .default(default_idx)
             .interact()
             .unwrap()
     };
 
-    println!("Client: {}", clients[selection]);
+    let client = &clients[selection];
 
-    // TODO: Now actually do something with it
+    // Now select which action to perform
+    let action = FuzzySelect::new()
+        .with_prompt("Which action do you want to run?")
+        .items(&client.supported_actions)
+        .default(0)
+        .interact()
+        .unwrap();
+
+    let selected_action = &client.supported_actions[action];
+
+    let action = Action {
+        action: selected_action.clone(),
+        // TODO: find a way to find out how many arguments the action needs,
+        // and then ask for that many
+        args: vec![],
+    };
+
+    println!("Running action {} on client {}", &action, client.name);
+
+    post_action(&config, client.id, &action).expect("Failed to post action");
+
+    println!("Sent action.");
 }

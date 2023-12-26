@@ -11,8 +11,8 @@ pub struct ConnectionInfo {
     name: String,
     pub connected_at: std::time::SystemTime,
     channel: UnboundedSender<ActionMessage>,
+    supported_actions: Vec<String>,
 }
-
 
 pub struct Manager {
     connections: Arc<RwLock<HashMap<usize, ConnectionInfo>>>,
@@ -32,17 +32,26 @@ impl Manager {
     }
 
     // Add a new WebSocket connection to the manager.
-    pub fn add_connection(&self, tx: &UnboundedSender<ActionMessage>, name: &String) -> usize {
+    pub fn add_connection(
+        &self,
+        tx: &UnboundedSender<ActionMessage>,
+        name: &String,
+        supported_actions: Vec<String>,
+    ) -> usize {
         let id = self
             .counter
             .fetch_add(1, std::sync::atomic::Ordering::SeqCst);
 
         let mut connections = self.connections.write().unwrap();
-        connections.insert(id, ConnectionInfo{
-            connected_at: std::time::SystemTime::now(),
-            name: name.clone(),
-            channel: tx.clone(),
-        });
+        connections.insert(
+            id,
+            ConnectionInfo {
+                connected_at: std::time::SystemTime::now(),
+                name: name.clone(),
+                channel: tx.clone(),
+                supported_actions,
+            },
+        );
 
         id
     }
@@ -60,6 +69,7 @@ impl Manager {
                 name: info.name.clone(),
                 id,
                 connected_at: info.connected_at,
+                supported_actions: info.supported_actions.clone(),
             })
             .collect()
     }

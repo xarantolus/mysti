@@ -1,3 +1,0 @@
-# Debug configuration file
-server_host = "ws://localhost:8089"
-token = "debug-token"

@@ -1,4 +1,7 @@
-use common::{client_config::ClientConfig, types::ConnectedClientInfo, url::generate_request_url};
+use common::{
+    action::Action, client_config::ClientConfig, types::ConnectedClientInfo,
+    url::generate_request_url,
+};
 
 use serde::de::DeserializeOwned;
 
@@ -26,4 +29,24 @@ pub fn fetch_connected_clients(cfg: &ClientConfig) -> anyhow::Result<Vec<Connect
         "/devices",
         common::url::Scheme::HTTP,
     )?)
+}
+
+pub fn post_action(cfg: &ClientConfig, client_id: usize, action: &Action) -> anyhow::Result<()> {
+    let url = generate_request_url(
+        cfg,
+        &format!("/actions/create/{}", client_id),
+        common::url::Scheme::HTTP,
+    )?;
+
+    let client = reqwest::blocking::Client::new();
+    let response = client.post(url).json(action).send()?;
+
+    if response.status().is_success() {
+        Ok(())
+    } else {
+        Err(anyhow::anyhow!(
+            "Request failed with status code: {}",
+            response.status()
+        ))
+    }
 }

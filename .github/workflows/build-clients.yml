@@ -17,18 +17,26 @@ jobs:
         toolchain: stable
         override: true
 
-    - name: Build
+    - name: Build daemon
       run: cargo build --release
       working-directory: daemon
 
-    - name: Rename binary
-      run: mv target/release/mysti-daemon.exe mysti-daemon-windows.exe
+    - name: Build CLI
+      run: cargo build --release
+      working-directory: cli
+
+    - name: Package binaries
+      run: |
+        Move-Item -Path target\release\mysti-daemon.exe -Destination mysti-daemon.exe
+        Move-Item -Path target\release\mysti.exe -Destination mysti.exe
+        Compress-Archive -Path mysti-daemon.exe, mysti.exe -DestinationPath mysti-windows.zip
+      shell: powershell
 
     - name: Upload artifact
       uses: actions/upload-artifact@v2
       with:
-        name: mysti-daemon-windows
-        path: ./mysti-daemon-windows.exe
+        name: mysti-windows
+        path: ./mysti-windows.zip
 
   build-ubuntu:
     runs-on: ubuntu-latest
@@ -45,18 +53,26 @@ jobs:
         toolchain: stable
         override: true
 
-    - name: Build
+    - name: Build daemon
       run: cargo build --release
       working-directory: daemon
 
-    - name: Rename binary
-      run: mv target/release/mysti-daemon mysti-daemon-ubuntu
+    - name: Build CLI
+      run: cargo build --release
+      working-directory: cli
+
+    - name: Package binaries
+      run: |
+        mv target/release/mysti-daemon mysti-daemon
+        mv target/release/mysti mysti
+        tar -czvf mysti-ubuntu.tar.gz mysti-daemon mysti
+      shell: bash
 
     - name: Upload artifact
       uses: actions/upload-artifact@v2
       with:
-        name: mysti-daemon-ubuntu
-        path: ./mysti-daemon-ubuntu
+        name: mysti-ubuntu
+        path: ./mysti-ubuntu.tar.gz
 
   build-fedora:
     runs-on: ubuntu-latest
@@ -75,18 +91,26 @@ jobs:
         curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
         source $HOME/.cargo/env
 
-    - name: Build
+    - name: Build daemon
       run: source $HOME/.cargo/env && cargo build --release
       working-directory: daemon
 
-    - name: Rename binary
-      run: find . -type f -name mysti-daemon -exec mv {} mysti-daemon-fedora \;
+    - name: Build CLI
+      run: source $HOME/.cargo/env && cargo build --release
+      working-directory: cli
+
+    - name: Package binaries
+      run: |
+        find . -type f -name mysti-daemon -exec mv {} mysti-daemon \;
+        find . -type f -name mysti -exec mv {} mysti \;
+        tar -czvf mysti-fedora.tar.gz mysti-daemon mysti
+      shell: bash
 
     - name: Upload artifact
       uses: actions/upload-artifact@v2
       with:
-        name: mysti-daemon-fedora
-        path: ./mysti-daemon-fedora
+        name: mysti-fedora
+        path: ./mysti-fedora.tar.gz
 
   build-debian:
     runs-on: ubuntu-latest
@@ -109,19 +133,28 @@ jobs:
         source $HOME/.cargo/env
       shell: bash
 
-    - name: Build
+    - name: Build daemon
       run: source $HOME/.cargo/env && cargo build --release
       working-directory: daemon
       shell: bash
 
-    - name: Rename binary
-      run: find . -type f -name mysti-daemon -exec mv {} mysti-daemon-debian \;
+    - name: Build CLI
+      run: source $HOME/.cargo/env && cargo build --release
+      working-directory: cli
+      shell: bash
+
+    - name: Package binaries
+      run: |
+        find . -type f -name mysti-daemon -exec mv {} mysti-daemon \;
+        find . -type f -name mysti -exec mv {} mysti \;
+        tar -czvf mysti-debian.tar.gz mysti-daemon mysti
+      shell: bash
 
     - name: Upload artifact
       uses: actions/upload-artifact@v2
       with:
-        name: mysti-daemon-debian
-        path: ./mysti-daemon-debian
+        name: mysti-debian
+        path: ./mysti-debian.tar.gz
 
   build-archlinux:
     runs-on: ubuntu-latest
@@ -140,18 +173,26 @@ jobs:
         curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
         source $HOME/.cargo/env
 
-    - name: Build
+    - name: Build daemon
       run: source $HOME/.cargo/env && cargo build --release
       working-directory: daemon
 
-    - name: Rename binary
-      run: find . -type f -name mysti-daemon -exec mv {} mysti-daemon-archlinux \;
+    - name: Build CLI
+      run: source $HOME/.cargo/env && cargo build --release
+      working-directory: cli
+
+    - name: Package binaries
+      run: |
+        find . -type f -name mysti-daemon -exec mv {} mysti-daemon \;
+        find . -type f -name mysti -exec mv {} mysti \;
+        tar -czvf mysti-archlinux.tar.gz mysti-daemon mysti
+      shell: bash
 
     - name: Upload artifact
       uses: actions/upload-artifact@v2
       with:
-        name: mysti-daemon-archlinux
-        path: ./mysti-daemon-archlinux
+        name: mysti-archlinux
+        path: ./mysti-archlinux.tar.gz
 
   release:
     needs: [build-windows, build-ubuntu, build-fedora, build-debian, build-archlinux]
@@ -167,8 +208,7 @@ jobs:
       uses: softprops/action-gh-release@v1
       with:
         files: |
-          mysti-daemon-*/mysti-daemon-*
-        tag_name: latest
+          mysti-*/mysti-*
         body: |
-          This is the latest release of the Mysti daemon.
+          This is the latest release of the Mysti daemon and CLI.
         token: ${{ secrets.GITHUB_TOKEN }}

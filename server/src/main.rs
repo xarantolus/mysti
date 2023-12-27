@@ -5,6 +5,7 @@ use connection::Manager;
 use web_server::start_web_server;
 
 mod connection;
+mod websocket;
 
 mod config;
 use config::parse_file;

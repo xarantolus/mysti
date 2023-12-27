@@ -51,11 +51,19 @@ fn send_action_interactive(config: &ClientConfig) {
 
     let (selected_action, required_args) = &client.supported_actions[action];
 
+    let args = (1..=*required_args)
+        .into_iter()
+        .map(|arg| {
+            dialoguer::Input::<String>::new()
+                .with_prompt(format!("Enter value for argument {}/{}", arg, required_args))
+                .interact()
+                .unwrap()
+        })
+        .collect::<Vec<_>>();
+
     let action = Action {
         action: selected_action.clone(),
-        // TODO: find a way to find out how many arguments the action needs,
-        // and then ask for that many
-        args: vec![],
+        args: args
     };
 
     println!("Running action {} on client {}", &action, client.name);

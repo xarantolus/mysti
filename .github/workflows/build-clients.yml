@@ -204,11 +204,16 @@ jobs:
     - name: Download artifacts
       uses: actions/download-artifact@v2
 
+    - name: Generate tag name
+      run: echo "TAG_NAME=$(date +%F-%H-%M)" >> $GITHUB_ENV
+
     - name: Release
       uses: softprops/action-gh-release@v1
       with:
         files: |
           mysti-*/mysti-*
+        name: Daemon and CLI download
+        tag_name: ${{ env.TAG_NAME }}
         body: |
           This is the latest release of the Mysti daemon and CLI.
         token: ${{ secrets.GITHUB_TOKEN }}

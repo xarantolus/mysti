@@ -140,12 +140,13 @@ async fn handle_connection(
         }
     }
 
+    manager.remove_connection(id);
+
     info!(
         "WebSocket connection closed for {}, now have {} clients",
         id,
         manager.client_count()
     );
-    manager.remove_connection(id);
 }
 
 fn handle_ws_route(

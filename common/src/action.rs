@@ -70,6 +70,15 @@ impl ActionDefinition {
         max_arg
     }
 
+    pub fn is_available(&self) -> bool {
+        match std::env::consts::OS {
+            "linux" => self.linux.is_some(),
+            "macos" => self.macos.is_some(),
+            "windows" => self.windows.is_some(),
+            _ => false,
+        }
+    }
+
     fn command_string(&self) -> Result<&String> {
         match std::env::consts::OS {
             "linux" => self.linux.as_ref(),

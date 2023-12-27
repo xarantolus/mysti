@@ -107,6 +107,7 @@ impl MystiClient {
                     .config
                     .actions
                     .iter()
+                    .filter(|a| a.is_available())
                     .map(|a| format!("{}:{}", a.name, a.required_args()))
                     .collect::<Vec<String>>()
                     .join(","),

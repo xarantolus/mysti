@@ -2,17 +2,17 @@
 server_host = "ws://localhost:8089"
 token = "debug-token"
 
-[[actions]]
+[[action]]
 name = "Shutdown"
 linux = "shutdown -h now"
 windows = "shutdown /s /f /t 0"
 
-[[actions]]
+[[action]]
 name = "Logoff"
 windows = "rundll32.exe user32.dll,LockWorkStation"
 linux = "loginctl terminate-user philipp"
 
-[[actions]]
+[[action]]
 name = "Reboot"
 linux = "shutdown -r now"
 windows = "shutdown /r /f /t 0"

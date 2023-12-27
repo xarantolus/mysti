@@ -10,7 +10,7 @@ pub struct ClientConfig {
 
     pub wol_shortcut: Option<String>,
 
-    #[serde(default = "Vec::new")]
+    #[serde(default = "Vec::new", rename = "action")]
     pub actions: Vec<ActionDefinition>,
 }
 

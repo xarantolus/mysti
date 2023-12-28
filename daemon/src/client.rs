@@ -8,10 +8,13 @@ use futures_util::SinkExt;
 use futures_util::StreamExt;
 use image::ImageOutputFormat;
 use std::convert::TryInto;
+use std::ops::Add;
+use std::pin::pin;
 use std::{thread, time::Duration};
 use tokio::select;
 use tokio::sync::mpsc::channel;
 use tokio::sync::mpsc::Sender;
+use tokio::time::Instant;
 use tokio_tungstenite::connect_async;
 
 enum LocalEvent {
@@ -142,9 +145,19 @@ impl MystiClient {
 
                 println!("Connected to server");
 
-                let (mut socket_sender, mut socket_receiver) = socket.split();
+                let (mut socket_sender, socket_receiver) = socket.split();
+                // Peekable is needed to check if there is a pong message without consuming it
+                let mut socket_receiver = pin!(socket_receiver.peekable());
 
-                let mut ping_interval = tokio::time::interval(Duration::from_secs(60));
+                // We start pinging around 5 seconds after connecting, as
+                // otherwise we might have a race between the initial ping and
+                // the initial data sent from the server.
+                // While we do handle that race correctly in the ping/pong handler,
+                // the delay helps make it less likely.
+                let mut ping_interval = tokio::time::interval_at(
+                    Instant::now().add(Duration::from_secs(5)),
+                    Duration::from_secs(60),
+                );
 
                 loop {
                     // Read something from the socket OR write something to the socket when we get an outgoing event
@@ -203,16 +216,23 @@ impl MystiClient {
                                 break;
                             }
 
-                            // Receive pong
-                            let Ok(Some(Ok(event))) = tokio::time::timeout(Duration::from_secs(5), socket_receiver.next()).await else {
+                            // We cannot be certain that the next message is a pong,
+                            // as the server might send a message in between
+                           let Ok(Some(Ok(event))) = tokio::time::timeout(Duration::from_secs(5), socket_receiver.as_mut().peek()).await else {
                                 log::warn!("Failed to receive pong");
                                 break;
                             };
                             if let tokio_tungstenite::tungstenite::Message::Pong(_) = event {
+                                // Now actually consume the pong
+                                match socket_receiver.next().await {
+                                    Some(Ok(tokio_tungstenite::tungstenite::Message::Pong(_))) => (),
+                                    // If we somehow get something else, it must be a bug
+                                    val => panic!("Expected buffered pong message, but got {:?}", val),
+                                };
                                 continue;
                             } else {
                                 log::warn!("Received non-pong message");
-                                break;
+                                // We continue with that message
                             }
                         }
                     }

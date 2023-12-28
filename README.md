@@ -75,11 +75,9 @@ Once all the information has been added, you can build your setup:
 Make sure the correct ports are exposed and then try running the daemon.
 
 ## Daemon and CLI Setup
-The daemon should run in the background of your devices and connect to the server, syncing events (like clipboard changes) as they happen. It is available for many Windows and Linux-based operating systems. The CLI is an additional helper that
+The daemon should run in the background of your devices and connect to the server, syncing events (like clipboard changes) as they happen. It is available for many Windows and Linux-based operating systems. The CLI is an additional helper for sending remote commands to other connected clients.
 
-This section shows how to set up the daemon to start on user login.
-
-First of all, you can download the daemon and CLI binaries for your client(s) from [the latest release here on GitHub](http://github.com/xarantolus/mysti/releases/latest). For Windows, you would download both "mysti-daemon-windows.exe" and "mysti-windows.exe"
+First of all, you can download the daemon and CLI binaries for your client(s) from [the latest release here on GitHub](http://github.com/xarantolus/mysti/releases/latest). For Windows, you would download and unzip `mysti-windows.zip`. Then you can unzip it into a directory that is available on your `$PATH`. The same goes for Linux.
 
 ### Configuration
 First of all, we need to tell the daemon which server to connect to. You can do this by creating a configuration file with [this content](deployment/daemon/daemon-config.toml):
@@ -101,9 +99,15 @@ server_host = "https://my.host.com:1234"
 token = "my cool token"
 ```
 
-It is recommended to put the configuration file into `~/.config/mysti.toml` on both Linux and Windows. That way, the CLI can also find the same configuration file.
+It is recommended to put the configuration file into `~/.config/mysti.toml` on both Linux and `%USERPROFILE%\.config\mysti.toml` on Windows (you might have to create the `.config` directory yourself). That way, both the CLI and daemon can find the same configuration file.
+
+### Automatically start the daemon on boot
+This section shows how to set up the daemon to start on user login. This is sadly very different between operating systems, so make sure to look for additional guides for your specific setup.
 
 ### Windows
+TODO: something about `shell:startup` and a VB script that hides the executable.
+
+TODO: Figure out if things with GUI that are started will show up that way. This is not necessarily the case if we set stuff to be hidden. Maybe also just make executable hidden?
 
 ### Fedora Linux (39)
 To create an autostart entry, edit the autostart file:

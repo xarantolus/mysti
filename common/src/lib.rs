@@ -4,8 +4,8 @@ use serde::{Deserialize, Serialize};
 pub mod action;
 pub mod client_config;
 pub mod name;
-pub mod url;
 pub mod types;
+pub mod url;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ActionMessage {

@@ -55,7 +55,10 @@ fn send_action_interactive(config: &ClientConfig) {
         .into_iter()
         .map(|arg| {
             dialoguer::Input::<String>::new()
-                .with_prompt(format!("Enter value for argument {}/{}", arg, required_args))
+                .with_prompt(format!(
+                    "Enter value for argument {}/{}",
+                    arg, required_args
+                ))
                 .interact()
                 .unwrap()
         })
@@ -63,7 +66,7 @@ fn send_action_interactive(config: &ClientConfig) {
 
     let action = Action {
         action: selected_action.clone(),
-        args: args
+        args: args,
     };
 
     println!("Running action {} on client {}", &action, client.name);

@@ -18,7 +18,7 @@ pub fn client_name() -> String {
 
     // Get distribution name or Windows version
     let dist_name = {
-        let mut distro : Option<String> = None;
+        let mut distro: Option<String> = None;
 
         #[cfg(target_os = "linux")]
         {
@@ -30,19 +30,20 @@ pub fn client_name() -> String {
                 for line in reader.lines() {
                     if let Ok(line) = line {
                         if line.starts_with("PRETTY_NAME=") {
-                            distro = Some(line
-                                .trim_start_matches("PRETTY_NAME=")
-                                .trim_matches('"')
-                                .to_string());
-							break;
+                            distro = Some(
+                                line.trim_start_matches("PRETTY_NAME=")
+                                    .trim_matches('"')
+                                    .to_string(),
+                            );
+                            break;
                         }
                     }
                 }
             }
 
-			if distro.is_none() {
-				distro = Some("UnknownLinux".to_string());
-			}
+            if distro.is_none() {
+                distro = Some("UnknownLinux".to_string());
+            }
         }
 
         #[cfg(target_os = "windows")]

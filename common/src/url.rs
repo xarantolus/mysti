@@ -4,39 +4,29 @@ use url::Url;
 
 pub enum Scheme {
     WebSocket,
-    HTTP
+    HTTP,
 }
 
 impl Scheme {
     fn get_matching_ws_scheme(&self, current_scheme: &str) -> Result<&str> {
         Ok(match current_scheme {
-             "http" => "ws",
-             "https" => "wss",
+            "http" => "ws",
+            "https" => "wss",
             "ws" => "ws",
             "wss" => "wss",
             "" => "wss",
-            _ => {
-                return Err(anyhow::anyhow!(
-                    "Invalid URL scheme {:?}",
-                    current_scheme
-                ))
-            }
+            _ => return Err(anyhow::anyhow!("Invalid URL scheme {:?}", current_scheme)),
         })
     }
 
     fn get_matching_http_scheme(&self, current_scheme: &str) -> Result<&str> {
         Ok(match current_scheme {
-             "http" => "http",
-             "https" => "https",
+            "http" => "http",
+            "https" => "https",
             "ws" => "http",
             "wss" => "https",
             "" => "https",
-            _ => {
-                return Err(anyhow::anyhow!(
-                    "Invalid URL scheme {:?}",
-                    current_scheme
-                ))
-            }
+            _ => return Err(anyhow::anyhow!("Invalid URL scheme {:?}", current_scheme)),
         })
     }
 

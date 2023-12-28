@@ -1,4 +1,7 @@
-use std::{fmt::{Display, Formatter}, time::SystemTime};
+use std::{
+    fmt::{Display, Formatter},
+    time::SystemTime,
+};
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct ConnectedClientInfo {

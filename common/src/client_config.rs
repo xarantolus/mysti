@@ -31,10 +31,7 @@ pub fn find_parse_config() -> Result<ClientConfig> {
     // Linux/Mac: XDG_CONFIG_HOME, $HOME/.config, working directory
     // Windows: %USERPROFILE%\.config, working directory
 
-    let mut paths = vec![
-        "mysti.toml".to_string(),
-        "../mysti.toml".to_string(),
-    ];
+    let mut paths = vec!["mysti.toml".to_string(), "../mysti.toml".to_string()];
 
     #[cfg(target_os = "windows")]
     {

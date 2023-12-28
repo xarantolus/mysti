@@ -2,15 +2,17 @@
 Mysti is a cross-platform event synchronization software. It can be used to sync clipboard events between different devices, turn computers on and off via the network and other features.
 
 Current features:
-- Copy text and images between different computers (works on Windows and Linux)
+- Copy text and images between different computers (e.g. copy between a Windows PC and Linux Laptop)
 - Turn on a computer via Wake on LAN (if on the same network as your server and configured correctly)
 - Turn off, log off or reboot a computer remotely
 
 ### Overview
 Mysti has three components:
 - A **server** that clients can connect to for exchanging events
-- A **daemon** that runs in the background on client PCs to process events (run commands and send clipboard contents to the server)
+- A **daemon** that runs in the background on client PCs to process events (runs commands and sends clipboard changes to the server)
 - A **CLI** that can be used to send commands interactively
+
+![Architecture Diagram](.github/img/architecture.png)
 
 <details>
 
@@ -120,3 +122,7 @@ Type=Application
 ```
 
 Now upon a reboot, the daemon should run in the background. Check using `pidof mysti-daemon-fedora`
+
+### Limitations
+- On Linux, clipboard sync support depends on your setup (X11 vs. Wayland). In theory all options are supported, but I can't really test it. On my Fedora 39 machine with Wayland (and `Xwayland`), clipboard events works
+- Some image copy operations might not be synced. However, the daemon tries its best to convert between different formats and uses a common format to sync between all platforms

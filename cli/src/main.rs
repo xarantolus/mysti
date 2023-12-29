@@ -6,8 +6,13 @@ use crate::rest::post_action;
 mod rest;
 
 fn send_action_interactive(config: &ClientConfig) {
-    let clients =
-        rest::fetch_connected_clients(&config).expect("Failed to fetch connected clients");
+    let clients = match rest::fetch_connected_clients(config) {
+        Ok(clients) => clients,
+        Err(e) => {
+            eprintln!("Failed to fetch connected clients:\n{}\nMake sure you are connected to the internet", e);
+            return;
+        }
+    };
 
     if clients.is_empty() {
         println!("No clients are currently connected");

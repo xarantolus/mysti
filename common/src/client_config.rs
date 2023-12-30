@@ -21,7 +21,17 @@ pub fn parse_file(name: &str) -> Result<ClientConfig> {
 }
 
 pub fn parse(content: &str) -> Result<ClientConfig> {
-    toml::from_str::<ClientConfig>(content).context("Error during parse")
+    let res = toml::from_str::<ClientConfig>(content)?;
+
+    // make sure no tasks with same name exist
+    let mut names = std::collections::HashSet::new();
+    for action in &res.actions {
+        if !names.insert(&action.name) {
+            return Err(anyhow::anyhow!("Duplicate action name {}", action.name));
+        }
+    }
+
+    Ok(res)
 }
 
 /// Look for the configuration file in common directories

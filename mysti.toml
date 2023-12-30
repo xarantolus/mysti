@@ -16,7 +16,3 @@ linux = "loginctl terminate-user philipp"
 name = "Reboot"
 linux = "shutdown -r now"
 windows = "shutdown /r /f /t 0"
-
-[[action]]
-name = "Test"
-linux = 'sh -c "echo $(date) $1 >> /home/philipp/Misc/test.txt"'

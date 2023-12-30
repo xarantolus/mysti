@@ -1,5 +1,5 @@
 use common::client_config::ClientConfig;
-use notify::Watcher as _;
+use notify_debouncer_mini::{new_debouncer, DebounceEventResult};
 use std::{path::Path, sync::Arc, time::Duration};
 use tokio::sync::{mpsc::channel, Mutex};
 
@@ -7,7 +7,7 @@ use client::MystiClient;
 use image::ImageOutputFormat;
 use tokio::task;
 
-use crate::{client::LocalEvent, clipboard::Watcher};
+use crate::{client::LocalEvent, clipboard::Watcher as ClipboardWatcher};
 
 mod client;
 mod clipboard;
@@ -32,20 +32,11 @@ async fn main() {
     let (config_events, config_receiver) = std::sync::mpsc::sync_channel::<ClientConfig>(1);
     let config_path_cloned = config_path.clone();
     let mut config_watcher =
-        notify::recommended_watcher(move |res: notify::Result<notify::Event>| {
-            let Ok(event) = res else {
+        new_debouncer(Duration::from_secs(2), move |res: DebounceEventResult| {
+            let Ok(_events) = res else {
                 log::error!("Error watching config file: {:?}", res);
                 return;
             };
-
-            // The event must be an Access(Close(Write)) event
-            if event.kind
-                != notify::event::EventKind::Access(notify::event::AccessKind::Close(
-                    notify::event::AccessMode::Write,
-                ))
-            {
-                return;
-            }
 
             let cfg = match common::client_config::parse_file(&config_path_cloned) {
                 Ok(cfg) => cfg,
@@ -62,6 +53,7 @@ async fn main() {
         .expect("creating configuration file watcher");
 
     config_watcher
+        .watcher()
         .watch(Path::new(&config_path), notify::RecursiveMode::NonRecursive)
         .expect("watching configuration file");
 
@@ -69,7 +61,7 @@ async fn main() {
     // even when we restart the client
     let (clipboard_events, clipboard_receiver) = channel::<LocalEvent>(10);
     let rec_multi = Arc::new(Mutex::new(clipboard_receiver));
-    let mut clipboard_watcher = Watcher::new(IMAGE_FORMAT, clipboard_events.clone());
+    let mut clipboard_watcher = ClipboardWatcher::new(IMAGE_FORMAT, clipboard_events.clone());
     tokio::spawn(async move {
         clipboard_watcher
             .run()

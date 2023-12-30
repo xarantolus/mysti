@@ -105,9 +105,17 @@ It is recommended to put the configuration file into `~/.config/mysti.toml` on b
 This section shows how to set up the daemon to start on user login. This is sadly very different between operating systems, so make sure to look for additional guides for your specific setup.
 
 ### Windows
-TODO: something about `shell:startup` and a VB script that hides the executable.
+First of all, create a directory where you unzip `mysti.exe` and `mysti-daemon.exe`. Add that directory to the `PATH` environment variable.
 
-TODO: Figure out if things with GUI that are started will show up that way. This is not necessarily the case if we set stuff to be hidden. Maybe also just make executable hidden?
+Since we want to start the daemon without a console window visible, we need to create a wrapper script that starts the daemon. Create `mysti.vbs` with the following content:
+
+```vbs
+Set objShell = CreateObject("WScript.Shell")
+objShell.Run "mysti-daemon", 0
+Set objShell = Nothing
+```
+
+Then you can add a shortcut to `mysti.vbs` to your startup folder (open it with `Win+R` and `shell:startup`). Now when you start your machine, the script will be run, which runs the daemon.
 
 ### Fedora Linux (39)
 To create an autostart entry, edit the autostart file:

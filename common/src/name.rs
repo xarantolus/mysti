@@ -18,10 +18,10 @@ pub fn client_name() -> String {
 
     // Get distribution name or Windows version
     let dist_name = {
-        let mut distro: Option<String> = None;
-
         #[cfg(target_os = "linux")]
         {
+            let mut distro: Option<String> = None;
+
             use std::fs::File;
             use std::io::{BufRead, BufReader};
 
@@ -41,24 +41,31 @@ pub fn client_name() -> String {
                 }
             }
 
-            if distro.is_none() {
-                distro = Some("UnknownLinux".to_string());
-            }
+            distro.unwrap_or("UnknownLinux".to_string())
         }
 
         #[cfg(target_os = "windows")]
         {
-            distro = Some(Command::new("powershell")
+            Command::new("powershell")
                 .arg("-Command")
                 .arg(
                     "Get-CimInstance Win32_OperatingSystem | Select-Object -ExpandProperty Caption",
                 )
                 .output()
                 .map(|output| String::from_utf8_lossy(&output.stdout).trim().to_string())
-                .unwrap_or_else(|_| "UnknownWindows".to_string()))
+                .unwrap_or("UnknownWindows".to_string())
         }
 
-        distro.unwrap_or_else(|| "UnknownOS".to_string())
+        #[cfg(target_os = "macos")]
+        {
+            // Mac is not really supported tbh, but might work?
+            distro.unwrap_or("UnknownMac".to_string())
+        }
+
+        #[cfg(not(any(target_os = "linux", target_os = "windows", target_os = "macos")))]
+        {
+            "UnknownOS".to_string()
+        }
     };
 
     format!("{} on {} ({})", user_name, hostname, dist_name)

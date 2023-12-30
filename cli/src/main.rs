@@ -82,7 +82,7 @@ fn send_action_interactive(config: &ClientConfig) {
 }
 
 fn main() {
-    let config = common::client_config::find_parse_config().expect("Failed to parse config");
+    let (config, _) = common::client_config::find_parse_config().expect("Failed to parse config");
 
     let args = std::env::args().collect::<Vec<_>>();
     match args.len() {

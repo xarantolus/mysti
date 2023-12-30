@@ -1,5 +1,8 @@
 use std::{fmt::Display, process::Command};
 
+#[cfg(windows)]
+use std::os::windows::process::CommandExt;
+
 use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
 
@@ -113,7 +116,21 @@ impl ActionDefinition {
         // Replace %1, etc or $1, $2 in the command string with the arguments
         // Note that we might have escaped % or $ characters in the command string
         // and that we might have multiple digits in the argument number
+        #[cfg(not(windows))]
         let mut command = Command::new(split_results[0].clone());
+        #[cfg(windows)]
+        let mut command = {
+            let mut command = Command::new("cmd");
+            command
+                .arg("/C")
+                .arg("start")
+                .arg("")
+                .arg("/B")
+                .arg(split_results[0].clone())
+                // CREATE_NO_WINDOW
+                .creation_flags(0x08000000);
+            command
+        };
 
         for i in 1..split_results.len() {
             let mut arg = split_results[i].clone();

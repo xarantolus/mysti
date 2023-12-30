@@ -21,22 +21,12 @@ pub fn parse_file(name: &str) -> Result<ClientConfig> {
 }
 
 pub fn parse(content: &str) -> Result<ClientConfig> {
-    let res = toml::from_str::<ClientConfig>(content)?;
-
-    // make sure no tasks with same name exist
-    let mut names = std::collections::HashSet::new();
-    for action in &res.actions {
-        if !names.insert(&action.name) {
-            return Err(anyhow::anyhow!("Duplicate action name {}", action.name));
-        }
-    }
-
-    Ok(res)
+    toml::from_str::<ClientConfig>(content).context("Error during parse")
 }
 
 /// Look for the configuration file in common directories
 /// and stop when finding the first
-pub fn find_parse_config() -> Result<(ClientConfig, String)> {
+pub fn find_parse_config() -> Result<ClientConfig> {
     // Search in different order depending on the OS
     // Linux/Mac: XDG_CONFIG_HOME, $HOME/.config, working directory
     // Windows: %USERPROFILE%\.config, working directory
@@ -71,7 +61,7 @@ pub fn find_parse_config() -> Result<(ClientConfig, String)> {
         log::debug!("Trying to parse config file {}", path);
 
         match parse_file(&path) {
-            Ok(config) => return Ok((config, path.clone())),
+            Ok(config) => return Ok(config),
             Err(e) => {
                 // Only log if the file exists
                 if std::path::Path::new(&path).exists() {

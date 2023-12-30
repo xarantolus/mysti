@@ -1,3 +1,4 @@
+use crate::clipboard::{self, Watcher};
 use anyhow::Result;
 use common::action::ActionDefinition;
 use common::name::client_name;
@@ -5,19 +6,18 @@ use common::url;
 use common::{client_config::ClientConfig, ActionMessage, ClipboardContent};
 use futures_util::SinkExt;
 use futures_util::StreamExt;
+use image::ImageOutputFormat;
 use std::convert::TryInto;
 use std::ops::Add;
 use std::pin::pin;
-use std::sync::Arc;
-use std::time::Duration;
+use std::{thread, time::Duration};
 use tokio::select;
+use tokio::sync::mpsc::channel;
 use tokio::sync::mpsc::Sender;
-use tokio::sync::mpsc::{channel, Receiver};
-use tokio::sync::Mutex;
 use tokio::time::Instant;
 use tokio_tungstenite::connect_async;
 
-pub enum LocalEvent {
+enum LocalEvent {
     ClipboardEvent(ClipboardContent),
 }
 
@@ -35,33 +35,15 @@ impl From<ClipboardContent> for LocalEvent {
 
 pub struct MystiClient {
     config: ClientConfig,
-    tasks: Vec<tokio::task::JoinHandle<()>>,
+    image_format: ImageOutputFormat,
 }
 
 impl MystiClient {
-    pub fn new(config: ClientConfig) -> Self {
+    pub fn new(config: ClientConfig, image_format: ImageOutputFormat) -> Self {
         Self {
             config,
-            tasks: Vec::new(),
+            image_format,
         }
-    }
-
-    pub async fn abort(&mut self) -> Result<()> {
-        for task in self.tasks.iter().rev() {
-            task.abort();
-        }
-
-        for task in self.tasks.drain(..) {
-            // Ensure our tasks are dead
-            let alive = tokio::time::timeout(Duration::from_secs(10), task).await;
-            if let Err(_) = alive {
-                log::warn!("Task did not finish in time");
-
-                return Err(anyhow::anyhow!("Aborted task did not finish in time"));
-            }
-        }
-
-        Ok(())
     }
 
     async fn on_local_clipboard_change(&self, content: ClipboardContent, channel: Sender<Event>) {
@@ -86,7 +68,7 @@ impl MystiClient {
 
         match &event {
             ActionMessage::Clipboard(content) => {
-                crate::clipboard::set_clipboard(&content)?;
+                clipboard::set_clipboard(&content)?;
             }
             ActionMessage::Action(action) => {
                 let action_definition =
@@ -106,11 +88,16 @@ impl MystiClient {
         Ok(())
     }
 
-    pub async fn run(
-        &mut self,
-        clipboard_receiver: Arc<Mutex<Receiver<LocalEvent>>>,
-        token: tokio_util::sync::CancellationToken,
-    ) -> Result<()> {
+    pub async fn run(&mut self) -> Result<()> {
+        // copy the sender, creating a new one
+        let (clipboard_events, mut clipboard_receiver) = channel::<LocalEvent>(10);
+
+        // Run in a separate thread
+        let mut w = Watcher::new(self.image_format.clone(), clipboard_events.clone());
+        thread::spawn(move || {
+            w.run().expect("Failed to run watcher");
+        });
+
         // Parse and set the correct URL
         let mut server_url =
             url::generate_request_url(&self.config, "/ws", url::Scheme::WebSocket)?;
@@ -134,7 +121,7 @@ impl MystiClient {
         let (outgoing_events, mut outgoing_receiver) = channel::<ActionMessage>(10);
 
         let moved_server_url = server_url.clone();
-        self.tasks.push(tokio::spawn(async move {
+        tokio::spawn(async move {
             loop {
                 log::info!("Connecting to {}", moved_server_url);
 
@@ -142,24 +129,17 @@ impl MystiClient {
                 let socket = {
                     let mut fail_count = 0;
                     loop {
-                        select! {
-                            _ = token.cancelled() => {
-                                log::info!("Received stop event");
-                                return;
-                            }
-                            evt = connect_async(moved_server_url.clone()) => match evt {
-                                Ok((socket, _)) => break socket,
-                                Err(e) => {
-                                    if fail_count % 12 == 0 {
-                                        log::warn!("Failed to connect to server: {}", e);
-                                    }
-                                    fail_count += 1;
-
-                                    tokio::time::sleep(Duration::from_secs(5)).await;
+                        match connect_async(moved_server_url.clone()).await {
+                            Ok((socket, _)) => break socket,
+                            Err(e) => {
+                                if fail_count % 12 == 0 {
+                                    log::warn!("Failed to connect to server: {}", e);
                                 }
-                            }
-                        }
+                                fail_count += 1;
 
+                                tokio::time::sleep(Duration::from_secs(5)).await;
+                            }
+                        };
                     }
                 };
 
@@ -182,10 +162,7 @@ impl MystiClient {
                 loop {
                     // Read something from the socket OR write something to the socket when we get an outgoing event
                     select! {
-                        _ = token.cancelled() => {
-                            log::info!("Received stop event");
-                            return;
-                        }
+                        // Simple example with correct sytax: receive from outgoing_receiver and socket_receiver
                         event = outgoing_receiver.recv() => {
                             println!("Received outgoing event: {:?}", event);
                             let Some(event) = event else { break };
@@ -262,26 +239,17 @@ impl MystiClient {
                 }
 
                 println!("Disconnected from server - reconnecting in 5 seconds");
-                // wait or stop event
-                select! {
-                    _ = token.cancelled() => {
-                        log::info!("Received stop event");
-                        return;
-                    }
-                    _ = tokio::time::sleep(Duration::from_secs(5)) => (),
-                }
+                tokio::time::sleep(Duration::from_secs(5)).await;
             }
-        }));
+        });
 
         let (all_events, mut all_receiver) = channel::<Event>(10);
 
         // Forward local events to the main channel
         let local_all_events = all_events.clone();
-        self.tasks.push(tokio::spawn(async move {
+        tokio::spawn(async move {
             loop {
                 let event = clipboard_receiver
-                    .lock()
-                    .await
                     .recv()
                     .await
                     .expect("Failed to receive local event");
@@ -290,11 +258,11 @@ impl MystiClient {
                     .await
                     .expect("Failed to send local event");
             }
-        }));
+        });
 
         // Forward remote events to the main channel
         let remote_all_events = all_events.clone();
-        self.tasks.push(tokio::spawn(async move {
+        tokio::spawn(async move {
             loop {
                 let event = remote_receiver
                     .recv()
@@ -305,17 +273,14 @@ impl MystiClient {
                     .await
                     .expect("Failed to send remote event");
             }
-        }));
-
-        let all_events_clone = all_events.clone();
-        let outgoing_events_clone = outgoing_events.clone();
+        });
 
         loop {
             let event = all_receiver.recv().await.expect("Failed to receive event");
 
             match event {
                 Event::LocalEvent(event) => {
-                    let event_return = all_events_clone.clone();
+                    let event_return = all_events.clone();
 
                     self.process_local_event(event, event_return).await;
                 }
@@ -326,7 +291,7 @@ impl MystiClient {
                     }
                 },
                 Event::OutgoingEvent(event) => {
-                    outgoing_events_clone
+                    outgoing_events
                         .send(event)
                         .await
                         .expect("Failed to send outgoing event");

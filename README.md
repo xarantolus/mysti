@@ -205,4 +205,5 @@ This sends the action to the server. Note that we don't get feedback of whether 
 - On Linux, clipboard sync support depends on your setup (X11 vs. Wayland). In theory all options are supported, but I can't really test it. On my Fedora 39 machine with Wayland (and `Xwayland`), clipboard events works
 - Some image copy operations might not be synced. However, the daemon tries its best to convert between different formats and uses a common format to sync between all platforms
 
-
+### [License](LICENSE)
+This is free as in freedom software. Do whatever you like with it.

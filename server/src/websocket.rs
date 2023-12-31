@@ -133,7 +133,6 @@ pub(crate) async fn handle_connection(
 }
 
 pub(crate) fn handle_ws_route(
-    _: bool,
     device_info: DeviceInfoFilter,
     ws: warp::ws::Ws,
     manager: Arc<Manager>,

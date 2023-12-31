@@ -26,7 +26,7 @@ fn with_config(
     warp::any().map(move || config.clone())
 }
 
-fn handle_wake_on_lan_route(_: bool, config: Arc<Config>) -> impl Reply {
+fn handle_wake_on_lan_route(config: Arc<Config>) -> impl Reply {
     let magic_packet = MagicPacket::new(&config.wake_on_lan.target_addr.0.into_array());
 
     let res = magic_packet.send();
@@ -47,14 +47,13 @@ fn handle_wake_on_lan_route(_: bool, config: Arc<Config>) -> impl Reply {
 }
 
 /// get a JSON message like {"action": "shutdown"} and broadcast it as an ActionMessage::Action
-fn handle_action_route(_: bool, wrapper: Action, manager: Arc<Manager>) -> impl Reply {
+fn handle_action_route(wrapper: Action, manager: Arc<Manager>) -> impl Reply {
     manager.broadcast(&ActionMessage::Action(wrapper), None);
     warp::reply::html("OK")
 }
 
 fn handle_specific_action_route(
     id: usize,
-    _: bool,
     wrapper: Action,
     manager: Arc<Manager>,
 ) -> impl Reply {
@@ -62,7 +61,7 @@ fn handle_specific_action_route(
     warp::reply::html("OK")
 }
 
-fn handle_read_clipboard_route(_: bool, manager: Arc<Manager>) -> impl Reply {
+fn handle_read_clipboard_route(manager: Arc<Manager>) -> impl Reply {
     let last_clipboard_content = manager.last_clipboard_content.read().unwrap();
 
     let text = match last_clipboard_content.clone() {
@@ -74,7 +73,6 @@ fn handle_read_clipboard_route(_: bool, manager: Arc<Manager>) -> impl Reply {
 }
 
 fn handle_write_clipboard_route(
-    _: bool,
     body: warp::hyper::body::Bytes,
     manager: Arc<Manager>,
 ) -> impl Reply {
@@ -96,7 +94,7 @@ fn handle_write_clipboard_route(
     }
 }
 
-fn handle_client_list(_: bool, manager: Arc<Manager>) -> impl Reply {
+fn handle_client_list(manager: Arc<Manager>) -> impl Reply {
     warp::reply::json(&manager.list_clients())
 }
 
@@ -107,10 +105,18 @@ struct AuthQuery {
 }
 
 // Define a filter for authentication
-fn with_auth(token: String) -> impl Filter<Extract = (bool,), Error = Rejection> + Clone {
+fn with_auth(token: String) -> impl Filter<Extract = (), Error = Rejection> + Clone {
     warp::any()
         .and(warp::filters::query::query::<AuthQuery>())
         .map(move |query: AuthQuery| query.token.as_bytes().ct_eq(token.as_bytes()).into())
+        .and_then(|is_valid| async move {
+            if is_valid {
+                Ok(())
+            } else {
+                Err(warp::reject::not_found())
+            }
+        })
+        .untuple_one()
 }
 
 pub async fn start_web_server(config: &Config, connection_manager: Arc<Manager>) {

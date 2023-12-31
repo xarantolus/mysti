@@ -7,6 +7,7 @@ use log::info;
 use std::net::SocketAddr;
 use warp::reject::Rejection;
 use warp::reply::Reply;
+use subtle::ConstantTimeEq;
 
 use std::{convert::Infallible, sync::Arc};
 
@@ -109,7 +110,7 @@ struct AuthQuery {
 fn with_auth(token: String) -> impl Filter<Extract = (bool,), Error = Rejection> + Clone {
     warp::any()
         .and(warp::filters::query::query::<AuthQuery>())
-        .map(move |query: AuthQuery| query.token == token)
+        .map(move |query: AuthQuery| query.token.as_bytes().ct_eq(token.as_bytes()).into())
 }
 
 pub async fn start_web_server(config: &Config, connection_manager: Arc<Manager>) {

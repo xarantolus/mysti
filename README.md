@@ -4,7 +4,7 @@ Mysti is a cross-platform event synchronization software. It can be used to sync
 Current features:
 - Copy text and images between different computers (e.g. copy between a Windows PC and Linux Laptop)
 - Turn on a computer via Wake on LAN (if on the same network as your server and configured correctly)
-- Turn off, log off or reboot a computer remotely
+- Any other user-defined shell command: turn off, log off, reboot a computer remotely, etc.
 
 ## Overview
 Mysti has three components:

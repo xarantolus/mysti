@@ -5,9 +5,9 @@ use common::action::Action;
 use common::{ActionMessage, ClipboardContent};
 use log::info;
 use std::net::SocketAddr;
+use subtle::ConstantTimeEq;
 use warp::reject::Rejection;
 use warp::reply::Reply;
-use subtle::ConstantTimeEq;
 
 use std::{convert::Infallible, sync::Arc};
 
@@ -52,11 +52,7 @@ fn handle_action_route(wrapper: Action, manager: Arc<Manager>) -> impl Reply {
     warp::reply::html("OK")
 }
 
-fn handle_specific_action_route(
-    id: usize,
-    wrapper: Action,
-    manager: Arc<Manager>,
-) -> impl Reply {
+fn handle_specific_action_route(id: usize, wrapper: Action, manager: Arc<Manager>) -> impl Reply {
     manager.send_to_specific(id, &ActionMessage::Action(wrapper));
     warp::reply::html("OK")
 }

@@ -93,13 +93,14 @@ impl Manager {
         let connections = self.connections.read().unwrap();
 
         info!(
-            "Broadcasting {}message: {:?}",
+            "Broadcasting message{} to {} other clients: {:?}",
             if sender.is_some() {
-                sender.unwrap().to_string() + " "
+                " by client ".to_string() + &sender.unwrap().to_string()
             } else {
                 "".to_string()
             },
-            message
+            connections.len().max(1) - if sender.is_some() { 1 } else { 0 },
+            message,
         );
 
         for (_, tx) in connections.iter().filter(|(&id, _)| {

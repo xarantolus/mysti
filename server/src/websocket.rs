@@ -2,8 +2,8 @@ use crate::connection::Manager;
 use anyhow::Result;
 use common::{ActionMessage, ClipboardContent};
 use futures_util::{SinkExt, StreamExt};
-use log::{debug, error, info};
-use std::{sync::Arc, thread};
+use log::{error, info};
+use std::sync::{Arc, RwLock};
 use tokio::sync::mpsc;
 use warp::{
     reply::Reply,
@@ -18,63 +18,28 @@ pub(crate) struct DeviceInfoFilter {
 
 pub(crate) async fn handle_client_message(
     message: ActionMessage,
-    manager: Arc<Manager>,
+    manager: Arc<RwLock<Manager>>,
     sender_id: Option<usize>,
 ) -> Result<()> {
-    // Sometimes we have custom logic for certain messages.
-    match &message {
-        ActionMessage::Clipboard(content) => {
-            let mut last_clipboard_content = manager.last_clipboard_content.write().unwrap();
-
-            // if equal content, stop
-            if *last_clipboard_content == content.clone() {
-                return Ok(());
-            }
-
-            *last_clipboard_content = content.clone();
-
-            debug!("Received clipboard content");
-
-            // If the clipboard content is text, then we should run the clipboard actions.
-            if let ClipboardContent::Text(text) = content {
-                for action in manager.config.clipboard_actions.iter() {
-                    let (matches, args) = action.matches(text);
-
-                    if matches {
-                        info!("Clipboard content matches regex: {}", action.regex);
-
-                        // Run this in a separate thread
-                        let action = action.clone();
-                        let args = args.clone();
-
-                        // Spawn thread in background, but don't wait for it to finish
-                        thread::spawn(move || {
-                            if let Err(e) = action.run(args) {
-                                error!("Error running action: {}", e);
-                            }
-                        });
-                    }
-                }
-            }
-        }
-        _ => (),
-    }
-
-    manager.broadcast(&message, sender_id);
+    manager.write().unwrap().broadcast(&message, sender_id);
 
     Ok(())
 }
 
 pub(crate) async fn handle_connection(
     ws: WebSocket,
-    manager: Arc<Manager>,
+    manager: Arc<RwLock<Manager>>,
     device_name: String,
     supported_actions: Vec<(String, usize)>,
 ) {
     let (mut user_ws_tx, mut user_ws_rx) = ws.split();
     let (websocket_writer, mut websocket_outbound_stream) = mpsc::unbounded_channel();
 
-    let id = manager.add_connection(&websocket_writer, &device_name, supported_actions);
+    let id =
+        manager
+            .write()
+            .unwrap()
+            .add_connection(&websocket_writer, &device_name, supported_actions);
 
     // Every time we get a message from the outbound stream, send it to the user.
     tokio::spawn(async move {
@@ -99,7 +64,8 @@ pub(crate) async fn handle_connection(
     let manager_clone = manager.clone();
     tokio::spawn(async move {
         // Send the last clipboard content to the user
-        let last_clipboard_content = manager_clone.last_clipboard_content.read().unwrap();
+        let manager = manager_clone.write().unwrap();
+        let last_clipboard_content = manager.last_clipboard_content.read().unwrap();
         let content = last_clipboard_content.clone();
 
         match content {
@@ -115,7 +81,7 @@ pub(crate) async fn handle_connection(
         "Connected WebSocket connection {} ({}), now have {} connections",
         id,
         device_name,
-        manager.client_count()
+        manager.read().unwrap().client_count()
     );
 
     // Every time we get a message from the user, handle it with the handler.
@@ -145,19 +111,19 @@ pub(crate) async fn handle_connection(
         }
     }
 
-    manager.remove_connection(id);
+    manager.write().unwrap().remove_connection(id);
 
     info!(
         "WebSocket connection closed for {}, now have {} clients",
         id,
-        manager.client_count()
+        manager.read().unwrap().client_count()
     );
 }
 
 pub(crate) fn handle_ws_route(
     device_info: DeviceInfoFilter,
     ws: warp::ws::Ws,
-    manager: Arc<Manager>,
+    manager: Arc<RwLock<Manager>>,
 ) -> impl Reply {
     ws.on_upgrade(move |socket| {
         handle_connection(

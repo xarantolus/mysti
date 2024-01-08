@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::sync::{Arc, RwLock};
 
 mod web_server;
 use connection::Manager;
@@ -23,7 +23,7 @@ async fn main() {
         config.clipboard_actions.len()
     );
 
-    let server_data = Arc::new(Manager::new(config.clone()));
+    let server_data = Arc::new(RwLock::new(Manager::new(config.clone())));
 
     start_web_server(&config, server_data).await;
 }

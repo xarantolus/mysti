@@ -5,6 +5,7 @@ use common::action::Action;
 use common::{ActionMessage, ClipboardContent};
 use log::info;
 use std::net::SocketAddr;
+use std::sync::RwLock;
 use subtle::ConstantTimeEq;
 use warp::reject::Rejection;
 use warp::reply::Reply;
@@ -15,8 +16,8 @@ use wake_on_lan::MagicPacket;
 use warp::Filter;
 
 fn with_manager(
-    manager: Arc<Manager>,
-) -> impl Filter<Extract = (Arc<Manager>,), Error = Infallible> + Clone {
+    manager: Arc<RwLock<Manager>>,
+) -> impl Filter<Extract = (Arc<RwLock<Manager>>,), Error = Infallible> + Clone {
     warp::any().map(move || manager.clone())
 }
 
@@ -47,17 +48,28 @@ fn handle_wake_on_lan_route(config: Arc<Config>) -> impl Reply {
 }
 
 /// get a JSON message like {"action": "shutdown"} and broadcast it as an ActionMessage::Action
-fn handle_action_route(wrapper: Action, manager: Arc<Manager>) -> impl Reply {
-    manager.broadcast(&ActionMessage::Action(wrapper), None);
+fn handle_action_route(wrapper: Action, manager: Arc<RwLock<Manager>>) -> impl Reply {
+    manager
+        .write()
+        .unwrap()
+        .broadcast(&ActionMessage::Action(wrapper), None);
     warp::reply::html("OK")
 }
 
-fn handle_specific_action_route(id: usize, wrapper: Action, manager: Arc<Manager>) -> impl Reply {
-    manager.send_to_specific(id, &ActionMessage::Action(wrapper));
+fn handle_specific_action_route(
+    id: usize,
+    wrapper: Action,
+    manager: Arc<RwLock<Manager>>,
+) -> impl Reply {
+    manager
+        .write()
+        .unwrap()
+        .send_to_specific(id, &ActionMessage::Action(wrapper));
     warp::reply::html("OK")
 }
 
-fn handle_read_clipboard_route(manager: Arc<Manager>) -> impl Reply {
+fn handle_read_clipboard_route(manager: Arc<RwLock<Manager>>) -> impl Reply {
+    let manager = manager.write().unwrap();
     let last_clipboard_content = manager.last_clipboard_content.read().unwrap();
 
     let text = match last_clipboard_content.clone() {
@@ -70,7 +82,7 @@ fn handle_read_clipboard_route(manager: Arc<Manager>) -> impl Reply {
 
 fn handle_write_clipboard_route(
     body: warp::hyper::body::Bytes,
-    manager: Arc<Manager>,
+    manager: Arc<RwLock<Manager>>,
 ) -> impl Reply {
     let text = String::from_utf8_lossy(&body).to_string();
 
@@ -90,8 +102,8 @@ fn handle_write_clipboard_route(
     }
 }
 
-fn handle_client_list(manager: Arc<Manager>) -> impl Reply {
-    warp::reply::json(&manager.list_clients())
+fn handle_client_list(manager: Arc<RwLock<Manager>>) -> impl Reply {
+    warp::reply::json(&manager.read().unwrap().list_clients())
 }
 
 // Define a struct to represent the query parameters
@@ -115,7 +127,7 @@ fn with_auth(token: String) -> impl Filter<Extract = (), Error = Rejection> + Cl
         .untuple_one()
 }
 
-pub async fn start_web_server(config: &Config, connection_manager: Arc<Manager>) {
+pub async fn start_web_server(config: &Config, connection_manager: Arc<RwLock<Manager>>) {
     let ws_route = warp::path("ws")
         .and(with_auth(config.token.to_string()))
         .and(warp::query::<DeviceInfoFilter>())

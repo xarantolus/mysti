@@ -1,10 +1,11 @@
 use common::types::ConnectedClientInfo;
 use common::{ActionMessage, ClipboardContent};
-use log::info;
+use log::{debug, error, info};
 
 use std::collections::HashMap;
 use std::sync::atomic::AtomicUsize;
 use std::sync::{Arc, RwLock};
+use std::thread;
 use tokio::sync::mpsc::UnboundedSender;
 
 pub struct ConnectionInfo {
@@ -20,6 +21,9 @@ pub struct Manager {
     pub(crate) config: crate::config::Config,
 
     pub last_clipboard_content: RwLock<ClipboardContent>,
+
+    // In case we got a message while nobody was connected, we save it here - unless it's clipboard related
+    last_message: RwLock<Option<ActionMessage>>,
 }
 
 impl Manager {
@@ -30,6 +34,7 @@ impl Manager {
             connections: Arc::new(RwLock::new(HashMap::new())),
             counter: AtomicUsize::new(0),
             last_clipboard_content: RwLock::new(ClipboardContent::None),
+            last_message: RwLock::new(None),
         }
     }
 
@@ -54,6 +59,10 @@ impl Manager {
                 supported_actions,
             },
         );
+
+        if let Some(last_message) = self.last_message.read().unwrap().clone() {
+            tx.send(last_message).unwrap();
+        }
 
         id
     }
@@ -90,9 +99,71 @@ impl Manager {
         }
     }
 
+    fn clipboard_action(&mut self, text: &str) {
+        for action in self.config.clipboard_actions.iter() {
+            let (matches, args) = action.matches(text);
+
+            if matches {
+                info!("Clipboard content matches regex: {}", action.regex);
+
+                // Run this in a separate thread
+                let action = action.clone();
+                let args = args.clone();
+
+                // Spawn thread in background, but don't wait for it to finish
+                thread::spawn(move || {
+                    if let Err(e) = action.run(args) {
+                        error!("Error running action: {}", e);
+                    }
+                });
+            }
+        }
+    }
+
+    fn custom_message_action(&mut self, message: &ActionMessage) {
+        // Sometimes we have custom logic for certain messages.
+        match &message {
+            ActionMessage::Clipboard(content) => {
+                {
+                    let mut last_clipboard_content = self.last_clipboard_content.write().unwrap();
+
+                    // if equal content, stop
+                    if *last_clipboard_content == content.clone() {
+                        return;
+                    }
+
+                    *last_clipboard_content = content.clone();
+                }
+
+                debug!("Received clipboard content");
+
+                // If the clipboard content is text, then we should run the clipboard actions.
+                if let ClipboardContent::Text(text) = content {
+                    self.clipboard_action(text);
+                }
+            }
+            _ => (),
+        }
+    }
+
     // Broadcast a message to all WebSocket connections, except for the sender if given.
-    pub fn broadcast(&self, message: &ActionMessage, sender: Option<usize>) {
+    pub fn broadcast(&mut self, message: &ActionMessage, sender: Option<usize>) {
+        self.custom_message_action(message);
+
         let connections = self.connections.read().unwrap();
+
+        if connections.is_empty() {
+            // Save the message for later
+            match message {
+                ActionMessage::Clipboard(_) => (),
+                _ => {
+                    let mut last_message = self.last_message.write().unwrap();
+                    *last_message = Some(message.clone());
+                }
+            }
+
+            return;
+        }
 
         info!(
             "Broadcasting message{} to {} other clients: {:?}",

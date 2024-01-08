@@ -3,7 +3,7 @@ use anyhow::Result;
 use common::{ActionMessage, ClipboardContent};
 use futures_util::{SinkExt, StreamExt};
 use log::{debug, error, info};
-use std::sync::Arc;
+use std::{sync::Arc, thread};
 use tokio::sync::mpsc;
 use warp::{
     reply::Reply,
@@ -34,6 +34,28 @@ pub(crate) async fn handle_client_message(
             *last_clipboard_content = content.clone();
 
             debug!("Received clipboard content");
+
+            // If the clipboard content is text, then we should run the clipboard actions.
+            if let ClipboardContent::Text(text) = content {
+                for action in manager.config.clipboard_actions.iter() {
+                    let (matches, args) = action.matches(text);
+
+                    if matches {
+                        info!("Clipboard content matches regex: {}", action.regex);
+
+                        // Run this in a separate thread
+                        let action = action.clone();
+                        let args = args.clone();
+
+                        // Spawn thread in background, but don't wait for it to finish
+                        thread::spawn(move || {
+                            if let Err(e) = action.run(args) {
+                                error!("Error running action: {}", e);
+                            }
+                        });
+                    }
+                }
+            }
         }
         _ => (),
     }

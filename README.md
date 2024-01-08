@@ -87,6 +87,16 @@ Once all the information has been added, you can build your setup:
 
 Make sure the correct ports are exposed and then try running the daemon.
 
+You can also add custom clipboard actions, which are commands that are executed when the clipboard matches a regex:
+
+```toml
+[[clipboard_action]]
+regex = '(http(?:.*?)music\.youtube\.com(?:\S+))'
+command = "curl 'http://sensiblehub-server:128/add?format=json' -X POST --data-raw '{\"searchTerm\":\"$1\"}'"
+```
+
+In this example, every time we find a YouTube Music URL, it gets sent to [a server](https://github.com/xarantolus/sensibleHub) via a cURL command. You can execute almost any command. Note that these commands run in the container, however, since we mount the host at `/host`, we can still run commands kind of on the host. This means that many commands will work, except for scripts that expect fixed paths (e.g. in a shebang). For Python scripts, instead of directly executing them (thus using the shebang), run `python script.py` or `python -m my_module` instead of `./script.py` or a typical wrapper that has a shebang.
+
 ## Daemon and CLI Setup
 The daemon should run in the background of your devices and connect to the server, syncing events (like clipboard changes) as they happen. It is available for many Windows and Linux-based operating systems. The CLI is an additional helper for sending remote commands to other connected clients.
 

@@ -17,14 +17,16 @@ pub struct ConnectionInfo {
 pub struct Manager {
     connections: Arc<RwLock<HashMap<usize, ConnectionInfo>>>,
     counter: AtomicUsize,
+    pub(crate) config: crate::config::Config,
 
     pub last_clipboard_content: RwLock<ClipboardContent>,
 }
 
 impl Manager {
     // Create a new ConnectionManager.
-    pub fn new() -> Self {
+    pub fn new(config: crate::config::Config) -> Self {
         Manager {
+            config: config,
             connections: Arc::new(RwLock::new(HashMap::new())),
             counter: AtomicUsize::new(0),
             last_clipboard_content: RwLock::new(ClipboardContent::None),

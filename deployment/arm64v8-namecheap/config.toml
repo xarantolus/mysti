@@ -10,3 +10,7 @@ token = "your custom token to use as password"
 # The mysti server must be on the same network as the PC.
 target_addr = "AA:AA:AA:AA:AA:AA"
 router_addr = "255.255.255.255"
+
+[[clipboard_action]]
+regex = '(http(?:.*?)music\.youtube\.com(?:\S+))'
+command = "curl 'http://sensiblehub-server:128/add?format=json' -X POST --data-raw '{\"searchTerm\":\"$1\"}'"

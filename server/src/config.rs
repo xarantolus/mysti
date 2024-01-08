@@ -9,12 +9,27 @@ pub struct Config {
     pub web_port: u16,
     pub wake_on_lan: WakeOnLanConfig,
     pub token: String,
+
+    #[serde(default = "Vec::new", rename = "clipboard_action")]
+    pub clipboard_actions: Vec<ClipboardAction>,
 }
 
 #[derive(Deserialize, Debug, Clone)]
 pub struct WakeOnLanConfig {
     pub target_addr: ParseableMacAddr,
     pub router_addr: Option<IpAddr>,
+}
+
+#[derive(Deserialize, Debug, Clone)]
+pub struct ClipboardAction {
+    // If the clipboard matches a regex, then the action is triggered
+    pub regex: String,
+
+    #[serde(skip)]
+    pub(crate) compiled_regex: Option<regex::Regex>,
+
+    // The action to trigger
+    pub command: String,
 }
 
 pub fn parse_file(name: &str) -> Result<Config> {
@@ -24,7 +39,11 @@ pub fn parse_file(name: &str) -> Result<Config> {
 }
 
 pub fn parse(content: &str) -> Result<Config> {
-    let config: Config = toml::from_str(content).context("Error during parse")?;
+    let mut config: Config = toml::from_str(content).context("Error during parse")?;
+
+    for action in config.clipboard_actions.iter_mut() {
+        action.compiled_regex = Some(regex::Regex::new(&action.regex)?);
+    }
 
     Ok(config)
 }

@@ -7,7 +7,18 @@ services:
       dockerfile: ${PWD}/Dockerfile
     network_mode: host
     restart: unless-stopped
-    volumes:
-      - ./config.toml:/config.toml
     cap_add:
       - NET_ADMIN
+    volumes:
+      - ./config.toml:/config.toml
+      # These mounts are needed for custom clipboard actions to work
+      - /:/host
+      - /etc:/etc:ro
+      - /lib:/lib:ro
+      - /lib64:/lib64:ro
+      - /usr/lib:/usr/lib:ro
+      - /usr/local/lib:/usr/local/lib:ro
+      - /usr/local/lib64:/usr/local/lib64:ro
+    environment:
+      - HOSTPATH=${PATH}
+      - HOSTMOUNT=/host

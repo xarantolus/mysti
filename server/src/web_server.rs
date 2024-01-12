@@ -4,6 +4,7 @@ use crate::Manager;
 use common::action::Action;
 use common::{ActionMessage, ClipboardContent};
 use log::info;
+
 use std::net::SocketAddr;
 use std::sync::RwLock;
 use subtle::ConstantTimeEq;
@@ -72,12 +73,36 @@ fn handle_read_clipboard_route(manager: Arc<RwLock<Manager>>) -> impl Reply {
     let manager = manager.write().unwrap();
     let last_clipboard_content = manager.last_clipboard_content.read().unwrap();
 
-    let text = match last_clipboard_content.clone() {
-        ClipboardContent::Text(text) => text,
-        _ => "No clipboard content".to_string(),
-    };
+    match last_clipboard_content.clone() {
+        ClipboardContent::Text(text) => warp::reply::with_header(
+            text,
+            "Content-Type",
+            "text/plain"
+                .parse::<warp::http::header::HeaderValue>()
+                .unwrap(),
+        )
+        .into_response(),
+        ClipboardContent::Image(bytes) => {
+            let Ok(image) = image::load_from_memory(&bytes) else {
+                return warp::reply::html("Error loading image from clipboard").into_response();
+            };
 
-    warp::reply::html(text)
+            let mut jpeg_bytes = std::io::Cursor::new(Vec::new());
+            let Ok(_) = image.write_to(&mut jpeg_bytes, image::ImageOutputFormat::Jpeg(100)) else {
+                return warp::reply::html("Error converting image to JPEG").into_response();
+            };
+
+            warp::reply::with_header(
+                jpeg_bytes.into_inner(),
+                "Content-Type",
+                "image/jpeg"
+                    .parse::<warp::http::header::HeaderValue>()
+                    .unwrap(),
+            )
+            .into_response()
+        }
+        _ => warp::reply::html("No clipboard content".to_string()).into_response(),
+    }
 }
 
 fn handle_write_clipboard_route(
@@ -131,7 +156,7 @@ pub async fn start_web_server(config: &Config, connection_manager: Arc<RwLock<Ma
     let ws_route = warp::path("ws")
         .and(with_auth(config.token.to_string()))
         .and(warp::query::<DeviceInfoFilter>())
-        .and(warp::ws())
+        .and(warp::ws().map(|ws: warp::ws::Ws| ws.max_frame_size(64 << 20)))
         .and(with_manager(connection_manager.clone()))
         .map(handle_ws_route);
 

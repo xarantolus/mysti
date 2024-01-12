@@ -1590,6 +1590,7 @@ dependencies = [
  "env_logger",
  "futures",
  "futures-util",
+ "image",
  "log",
  "macaddr",
  "regex",

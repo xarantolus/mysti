@@ -11,6 +11,7 @@ common = { path = "../common" }
 env_logger = "0.10.1"
 futures = "0.3.29"
 futures-util = "0.3.29"
+image = "0.24.7"
 log = "0.4.20"
 macaddr = { version = "1.0.1", features = ["serde"] }
 regex = "1.10.2"

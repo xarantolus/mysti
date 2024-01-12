@@ -15,7 +15,7 @@ async fn main() {
 
     let config = common::client_config::find_parse_config().expect("Failed to parse config");
 
-    let mut client = MystiClient::new(config, ImageOutputFormat::Bmp);
+    let mut client = MystiClient::new(config, ImageOutputFormat::Jpeg(100));
 
     client.run().await.expect("Failed to run client");
 }

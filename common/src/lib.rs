@@ -17,7 +17,6 @@ pub enum ActionMessage {
 pub enum ClipboardContent {
     Text(String),
     Image(Vec<u8>),
-    None,
 }
 
 impl Debug for ClipboardContent {
@@ -25,7 +24,6 @@ impl Debug for ClipboardContent {
         match self {
             ClipboardContent::Text(text) => write!(f, "Text({:?})", text),
             ClipboardContent::Image(content) => write!(f, "Image(len={})", content.len()),
-            ClipboardContent::None => write!(f, "None"),
         }
     }
 }

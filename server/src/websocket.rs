@@ -1,6 +1,6 @@
 use crate::connection::Manager;
 use anyhow::Result;
-use common::{ActionMessage, ClipboardContent};
+use common::ActionMessage;
 use futures_util::{SinkExt, StreamExt};
 use log::{error, info};
 use std::sync::{Arc, RwLock};
@@ -66,15 +66,9 @@ pub(crate) async fn handle_connection(
         // Send the last clipboard content to the user
         let manager = manager_clone.write().unwrap();
         let last_clipboard_content = manager.last_clipboard_content.read().unwrap();
-        let content = last_clipboard_content.clone();
 
-        match content {
-            ClipboardContent::None => (),
-            _ => {
-                let message = ActionMessage::Clipboard(last_clipboard_content.clone());
-                let _ = ws_writer_clone.send(message);
-            }
-        }
+        let message = ActionMessage::Clipboard(last_clipboard_content.clone());
+        let _ = ws_writer_clone.send(message);
     });
 
     log::info!(

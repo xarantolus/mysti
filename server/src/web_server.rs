@@ -75,7 +75,7 @@ fn handle_read_clipboard_route(manager: Arc<RwLock<Manager>>) -> impl Reply {
 
     match last_clipboard_content.clone() {
         ClipboardContent::Text(text) => warp::reply::with_header(
-            text,
+            warp::reply::html(text),
             "Content-Type",
             "text/plain"
                 .parse::<warp::http::header::HeaderValue>()
@@ -101,7 +101,6 @@ fn handle_read_clipboard_route(manager: Arc<RwLock<Manager>>) -> impl Reply {
             )
             .into_response()
         }
-        _ => warp::reply::html("No clipboard content".to_string()).into_response(),
     }
 }
 

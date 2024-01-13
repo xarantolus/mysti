@@ -68,7 +68,8 @@ fn get_clipboard_content(output_format: &ImageOutputFormat) -> Result<ClipboardC
             return Ok(ClipboardContent::Image(buf));
         }
     }
-    Ok(ClipboardContent::None)
+
+    Err(anyhow::anyhow!("No clipboard content"))
 }
 
 impl<T: From<ClipboardContent>> ClipboardHandler for &mut Watcher<T> {
@@ -95,7 +96,6 @@ impl<T: From<ClipboardContent>> ClipboardHandler for &mut Watcher<T> {
 
 pub fn set_clipboard(content: &ClipboardContent) -> anyhow::Result<()> {
     match &content {
-        ClipboardContent::None => Ok(()),
         ClipboardContent::Text(text) => {
             let mut clipboard = Clipboard::new()?;
 

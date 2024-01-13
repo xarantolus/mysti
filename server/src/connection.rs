@@ -33,7 +33,7 @@ impl Manager {
             config: config,
             connections: Arc::new(RwLock::new(HashMap::new())),
             counter: AtomicUsize::new(0),
-            last_clipboard_content: RwLock::new(ClipboardContent::None),
+            last_clipboard_content: RwLock::new(ClipboardContent::Text("".to_string())),
             last_message: RwLock::new(None),
         }
     }
